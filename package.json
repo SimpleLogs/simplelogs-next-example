@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@simplelogs/next": "file:/Users/reidkersey/Git/simplelogs-js-client",
     "next": "16.2.3",
     "react": "19.2.4",
     "react-dom": "19.2.4"

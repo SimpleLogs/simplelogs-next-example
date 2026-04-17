@@ -1,0 +1,7 @@
+{
+  "serverless": false,
+  "apiEndpoint": "http://localhost:3030/api/v1",
+  "batchInterval": 250,
+  "fireAndForget": false,
+  "debug": false
+}
