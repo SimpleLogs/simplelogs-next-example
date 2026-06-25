@@ -3,6 +3,10 @@ import HookWithProviderInlineButton from "./components/HookWithProviderInlineBut
 import HookWithProviderSeparateInitButton from "./components/HookWithProviderSeparateInitButton";
 import NoProviderButton from "./components/NoProviderButton";
 import ServerApiLogButton from "./components/ServerApiLogButton";
+import PageLoadTimeDemo from "./components/PageLoadTimeDemo";
+import ComponentMountTimeDemo from "./components/ComponentMountTimeDemo";
+import TimedCallbackDemo from "./components/TimedCallbackDemo";
+import WebVitalsDemo from "./components/WebVitalsDemo";
 
 export default async function Home() {
   const providerConfig = {
@@ -15,11 +19,11 @@ export default async function Home() {
     <main className="page-shell">
       <div className="hero">
         <p className="eyebrow">SimpleLogs Next.js</p>
-        <h1>Three integration styles + one server logging route</h1>
+        <h1>Integration styles + performance hooks</h1>
         <p className="hero-copy">
           This example keeps things intentionally small while showing the most
           useful ways to wire <code>@simplelogs/next</code> in a Next.js App
-          Router project.
+          Router project — including the new performance hooks.
         </p>
       </div>
 
@@ -65,6 +69,55 @@ export default async function Home() {
           <ServerApiLogButton />
         </article>
       </section>
+
+      <SimpleLogsProvider config={providerConfig}>
+        <section aria-label="SimpleLogs performance hooks" style={{ marginTop: "2rem" }}>
+          <h2 style={{ margin: "0 0 1rem", fontSize: "1.25rem", letterSpacing: "-0.01em" }}>
+            Performance Hooks
+          </h2>
+          <div className="demo-grid">
+            <article className="demo-card">
+              <h2>usePageLoadTime</h2>
+              <p>
+                Measures navigation start → page load event (or a specific DOM
+                element if <code>selector</code> is provided). Fires once on
+                mount.
+              </p>
+              <PageLoadTimeDemo />
+            </article>
+
+            <article className="demo-card">
+              <h2>useComponentMountTime</h2>
+              <p>
+                Records elapsed time from navigation start to when this
+                component first renders. Useful for tracking hydration and
+                lazy-load delays.
+              </p>
+              <ComponentMountTimeDemo />
+            </article>
+
+            <article className="demo-card">
+              <h2>useTimedCallback</h2>
+              <p>
+                Wraps any async or sync function and records its execution
+                duration automatically. Errors are re-thrown with{" "}
+                <code>{"{ error: true }"}</code> merged into metadata.
+              </p>
+              <TimedCallbackDemo />
+            </article>
+
+            <article className="demo-card">
+              <h2>useWebVitals</h2>
+              <p>
+                Monitors Core Web Vitals via <code>PerformanceObserver</code>.
+                Call once per vital. CLS is accumulated and flushed as a log
+                entry on unmount.
+              </p>
+              <WebVitalsDemo />
+            </article>
+          </div>
+        </section>
+      </SimpleLogsProvider>
 
       <section className="notes">
         <p>
