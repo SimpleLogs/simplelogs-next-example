@@ -41,7 +41,8 @@ jobs:
           # run `claude setup-token` locally, save the result as the
           # CLAUDE_CODE_OAUTH_TOKEN repo secret, and uncomment:
           # claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          track_progress: true
+          # track_progress is only valid on pull_request-family events, not dispatch
+          track_progress: ${{ github.event_name == 'pull_request' }}
           use_sticky_comment: true
           prompt: |
             REPO: ${{ github.repository }}
