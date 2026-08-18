@@ -1,0 +1,73 @@
+name: Claude PR Review
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to review"
+        required: true
+        type: string
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - "**.md"
+      - "**.png"
+      - "**.jpg"
+      - "**.svg"
+
+# A new push to the same PR cancels the in-flight review of the stale diff
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number || inputs.pr_number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Subscription billing instead of API billing: remove the line above,
+          # run `claude setup-token` locally, save the result as the
+          # CLAUDE_CODE_OAUTH_TOKEN repo secret, and uncomment:
+          # claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          track_progress: true
+          use_sticky_comment: true
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+
+            Review this pull request. If the repository root or .github folder
+            contains AGENTS.md, CLAUDE.md, or CONTRIBUTING.md, read them first
+            and treat them as the repository's binding standards.
+
+            Focus on, in priority order:
+            1. Bugs and correctness issues in the changed code
+            2. Security problems (exposed secrets, missing auth or validation,
+               leaked sensitive data)
+            3. Violations of the repository's documented standards
+            4. Missing or inadequate tests for the changed behavior
+
+            Rules for your review:
+            - Only review the diff of this PR, not pre-existing code.
+            - Use inline comments (mcp__github_inline_comment__create_inline_comment)
+              for line-specific findings, and the sticky comment for the overall
+              summary and verdict.
+            - Do not comment on style nitpicks, formatting, or anything a linter
+              would catch. Skip praise-only comments.
+            - If the PR looks good, say so briefly in the summary — do not invent
+              findings to seem thorough.
+          claude_args: |
+            --model claude-opus-5
+            --max-turns 25
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr view:*),Bash(gh pr diff:*),Read,Grep,Glob"
