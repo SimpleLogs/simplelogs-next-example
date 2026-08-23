@@ -1,27 +1,17 @@
 {
   "name": "simplelogs-next-example",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
+  "description": "SimpleLogs in a Next.js App Router app",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 5175",
     "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "start": "next start -p 5175"
   },
   "dependencies": {
-    "@simplelogs/next": "^1.3.1",
-    "next": "16.2.3",
-    "react": "19.2.4",
-    "react-dom": "19.2.4"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.3",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "@simplelogs/next": "^1.4.1",
+    "next": "^16.2.1",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
   }
 }
