@@ -13,8 +13,19 @@ export default function CheckoutButton() {
     // The SDK patches fetch to forward page, session and trace headers on
     // same-origin requests, so the route handler's own logs join this page's
     // trace without either side passing an id explicitly.
-    const res = await fetch("/api/checkout", { method: "POST" });
-    setStatus(res.ok ? "checkout ok — client and server share one trace" : "failed");
+    //
+    // Guarded because a rejected fetch — server down, offline — would
+    // otherwise leave the box reading "ready", making a failed checkout look
+    // identical to never having clicked.
+    let ok = false;
+    try {
+      const res = await fetch("/api/checkout", { method: "POST" });
+      ok = res.ok;
+    } catch {
+      ok = false;
+    }
+
+    setStatus(ok ? "checkout ok — client and server share one trace" : "failed");
   }
 
   return (

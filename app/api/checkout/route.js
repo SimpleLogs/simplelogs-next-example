@@ -37,15 +37,28 @@ export async function POST() {
     // unnecessary in development. A serverless function frozen the moment it
     // responds does not, and the batch is dropped with no error anywhere. The
     // SDK auto-flushes on Vercel specifically — it keys off the VERCEL env var
-    // — so Lambda, Cloud Run and Netlify get nothing, and this line is what
-    // covers them.
+    // — so Lambda, Cloud Run and Netlify get nothing without this line.
     //
-    // It is NOT a complete guarantee on Vercel itself. There the per-entry
-    // auto-flush has already drained the queue without awaiting the sends, so
-    // this call finds it empty and returns while those requests are still in
-    // flight. Timing the route against a collector that delays its reply by
-    // two seconds shows it plainly: 2.04s with VERCEL unset, 0.02s with
-    // VERCEL=1. Closing that window needs a fix in the SDK, not here.
+    // It is not an absolute guarantee, because the queue is process-wide and
+    // flush() drains it synchronously before awaiting the sends: anyone who
+    // arrives after someone else has drained finds it empty and returns while
+    // those sends are still outstanding.
+    //
+    // On Vercel that is not a race but the normal path — the per-entry
+    // auto-flush has always drained it first. Timing the route against a
+    // collector that delays its reply by two seconds shows it: 2.04s with
+    // VERCEL unset, 0.02s with VERCEL=1.
+    //
+    // Elsewhere it is a narrow window, between this request's last entry and
+    // the line below. Worth knowing about on a platform that runs requests
+    // concurrently in one process and throttles after responding (Cloud Run);
+    // it cannot arise where instances take one request at a time (Lambda). It
+    // did not reproduce here at twelve concurrent requests — every one awaited
+    // its own send in full — because a request normally still has its own
+    // entries queued when it reaches this line.
+    //
+    // Closing the window properly needs a fix in the SDK, not here:
+    // SimpleLogs/simplelogs-sdk#43.
     //
     // Safe in a `finally`: neither call rejects. The SDK catches send failures
     // inside the queue and re-queues the entries, so a throw here cannot
