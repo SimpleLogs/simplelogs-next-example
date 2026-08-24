@@ -79,6 +79,20 @@ variable can see them. Read an unprefixed variable from a layout marked
 `export const dynamic = "force-dynamic"` instead, and accept losing static
 rendering for that route.
 
+### Self-hosted collectors
+
+`SIMPLELOGS_API_ENDPOINT` is optional and only for self-hosted installs, but it
+has the same build-time trap as the client key and no prefix to signal it.
+
+The provider reads it during the layout's render and forwards it to the
+browser, and that render is prerendered — so the browser's copy is fixed at
+build. The server reads it from the environment per request.
+
+Set it only at run time and the two halves disagree: **server entries arrive at
+your collector while browser entries go to the SDK's default.** Half of every
+trace is missing, which reads as a correlation bug rather than a configuration
+one, and the browser half has left your deployment. Set it wherever you build.
+
 ## What you get without writing any logging code
 
 - **Page views**, including soft navigations between routes

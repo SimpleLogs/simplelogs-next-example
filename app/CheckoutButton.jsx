@@ -14,13 +14,12 @@ export default function CheckoutButton() {
     // same-origin requests, so the route handler's own logs join this page's
     // trace without either side passing an id explicitly.
     //
-    // Guarded because a rejected fetch — server down, offline — would
-    // otherwise leave the box reading "ready", making a failed checkout look
-    // identical to never having clicked.
-    // Both failure branches log. A visible "failed" with no entry behind it is
-    // the worst outcome for an example about logging — and catching the
-    // rejection to fix the status box would otherwise remove the unhandled
-    // rejection the SDK had been capturing for free.
+    // Guarded, and both failure branches log. A rejected fetch — server down,
+    // offline — would otherwise leave the box reading "ready", making a failed
+    // checkout look identical to never having clicked; and catching that
+    // rejection to fix the box would remove the unhandled rejection the SDK
+    // had been capturing for free. A visible "failed" with no entry behind it
+    // is the worst outcome for an example about logging.
     let ok = false;
     try {
       const res = await fetch("/api/checkout", { method: "POST" });
