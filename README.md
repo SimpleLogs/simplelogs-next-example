@@ -11,7 +11,7 @@ browser and the server — there is no second setup step for route handlers.
 You need both keys — SimpleLogs dashboard → **Settings → API Keys**.
 
 ```bash
-cp .env.example .env     # add SIMPLELOGS_SERVER_KEY and SIMPLELOGS_CLIENT_KEY
+cp .env.example .env     # add both keys — see Keys below for the prefix rule
 npm install
 npm run dev              # http://localhost:5175
 ```
@@ -29,27 +29,37 @@ Requires Node 20 or newer.
 ```jsx
 import { SimpleLogsProvider } from "@simplelogs/next/provider";
 
-<SimpleLogsProvider
-  config={{
-    serverKey: process.env.SIMPLELOGS_SERVER_KEY,
-    clientKey: process.env.SIMPLELOGS_CLIENT_KEY,
-  }}
->
+<SimpleLogsProvider config={{ clientKey: process.env.NEXT_PUBLIC_SIMPLELOGS_CLIENT_KEY }}>
   {children}
 </SimpleLogsProvider>
 ```
 
-It configures the server SDK during the RSC render and hands the client config
-down through context. `serverLogger` in a route handler and `useSimpleLogs()`
-in a client component are both ready with nothing else to wire.
+That hands the client config down through context, so `useSimpleLogs()` works
+anywhere below it. `serverLogger` in a route handler needs nothing further —
+the server SDK reads `SIMPLELOGS_SERVER_KEY` from the environment at request
+time.
 
 ## Keys
 
-Both are read on the server, so **neither needs `NEXT_PUBLIC_`**. The client
-key is passed down to the browser; the server key stays in the layout's render
-and is stripped before the config crosses that boundary.
+Two variables, and the difference between them is not decoration.
 
-Never add `NEXT_PUBLIC_` to the server key.
+| | Prefix | Read |
+|---|---|---|
+| `SIMPLELOGS_SERVER_KEY` | **never** `NEXT_PUBLIC_` | By the server SDK, from the environment, per request |
+| `NEXT_PUBLIC_SIMPLELOGS_CLIENT_KEY` | `NEXT_PUBLIC_` | Inlined into the client bundle at build time |
+
+**Never prefix the server key.** `NEXT_PUBLIC_` is what puts a value in the
+browser bundle, so prefixing it publishes the secret.
+
+**Do prefix the client key**, even though a root layout looks like server-only
+code. This layout uses no dynamic API, so Next prerenders it at *build* time —
+an unprefixed `process.env.SIMPLELOGS_CLIENT_KEY` read here is frozen at
+whatever the build environment had. Build in CI without it and the browser
+silently receives `undefined`: nothing is captured and nothing says so. `next
+dev` hides this completely, because in dev every render is dynamic.
+
+The client key is public by design and origin-locked in the dashboard, so the
+bundle is where it belongs.
 
 ## What you get without writing any logging code
 
@@ -112,12 +122,17 @@ percentiles meaningless.
 ## Session replay
 
 On by default in `@simplelogs/next`, still gated by the sample decision and the
-switch under Settings → Session Replay. To keep rrweb out of the bundle
-entirely:
+switch under Settings → Session Replay. To keep rrweb from ever being
+downloaded:
 
 ```jsx
-config={{ serverKey, clientKey, sessionReplay: { enabled: false } }}
+config={{ clientKey, sessionReplay: { enabled: false } }}
 ```
+
+`enabled` is read at runtime, so no bundler can eliminate rrweb on it — the SDK
+imports it dynamically, and in this example's production build it lands in its
+own ~204KB chunk that is simply never fetched. What the flag saves is the
+download, not the build output.
 
 ## Using the split packages directly
 

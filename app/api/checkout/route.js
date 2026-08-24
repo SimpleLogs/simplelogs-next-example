@@ -1,19 +1,28 @@
 import { serverLogger } from "@simplelogs/next/server";
 
 export async function POST() {
+  // A unique key, not a timestamp. start() and end() are matched on `key` in a
+  // process-wide map, so two requests landing in the same millisecond would
+  // otherwise share one and cross each other's pairs.
+  const key = `checkout-${crypto.randomUUID()}`;
+
   // No request argument anywhere below: next/headers gives the SDK a request
   // scope, so these pick up the browser's page, session and trace ids by
   // themselves.
-  const key = `checkout-${Date.now()}`;
   await serverLogger.start({ key, touchpoint: "checkout/submit" });
 
-  await serverLogger.log({
-    touchpoint: "checkout/submit",
-    level: "info",
-    message: "Checkout processed",
-  });
+  try {
+    await serverLogger.log({
+      touchpoint: "checkout/submit",
+      level: "info",
+      message: "Checkout processed",
+    });
 
-  await serverLogger.end({ key });
-
-  return Response.json({ ok: true });
+    return Response.json({ ok: true });
+  } finally {
+    // In a `finally` so the timing still closes when the work above throws —
+    // the failed request is the one you most want timed, and an unclosed start
+    // records nothing at all.
+    await serverLogger.end({ key });
+  }
 }
