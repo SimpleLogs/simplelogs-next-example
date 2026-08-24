@@ -2,8 +2,8 @@ import { serverLogger, flushServer } from "@simplelogs/next/server";
 
 export async function POST() {
   // A unique key, not a timestamp. start() and end() are matched on `key` in a
-  // process-wide map, so two requests landing in the same millisecond would
-  // otherwise share one and cross each other's pairs.
+  // process-wide map, so two requests in the same millisecond would otherwise
+  // share one and cross each other's pairs.
   const key = `checkout-${crypto.randomUUID()}`;
 
   // No request argument anywhere below: next/headers gives the SDK a request
@@ -25,51 +25,10 @@ export async function POST() {
     // records nothing at all.
     await serverLogger.end({ key });
 
-    // Flush before returning, and await it.
-    //
-    // Entries are batched behind a short timer. Measured against a local
-    // collector on `next build && next start`: with this line both entries are
-    // at the collector by the time the response returns; without it there are
-    // none at that moment and they arrive a few hundred milliseconds later,
-    // once the timer fires.
-    //
-    // A long-lived server survives that gap, which is why this looks
-    // unnecessary in development. A serverless function frozen the moment it
-    // responds does not, and the batch is dropped with no error anywhere. The
-    // SDK auto-flushes on Vercel specifically — it keys off the VERCEL env var
-    // — so Lambda, Cloud Run and Netlify get nothing without this line.
-    //
-    // It is not an absolute guarantee, because the queue is process-wide and
-    // flush() drains it synchronously before awaiting the sends: anyone who
-    // arrives after someone else has drained finds it empty and returns while
-    // those sends are still outstanding.
-    //
-    // On Vercel that is not a race but the normal path — the per-entry
-    // auto-flush has always drained it first. Timing the route against a
-    // collector that delays its reply by two seconds shows it: 2.04s with
-    // VERCEL unset, 0.02s with VERCEL=1.
-    //
-    // Elsewhere it is a narrow window, between this request's last entry and
-    // the line below. Worth knowing about on a platform that runs requests
-    // concurrently in one process and throttles after responding (Cloud Run);
-    // it cannot arise where instances take one request at a time (Lambda). It
-    // did not reproduce here at twelve concurrent requests — every one awaited
-    // its own send in full — because a request normally still has its own
-    // entries queued when it reaches this line.
-    //
-    // Closing the window properly needs a fix in the SDK, not here:
-    // SimpleLogs/simplelogs-sdk#43.
-    //
-    // Safe in a `finally`: neither call rejects. The SDK catches send failures
-    // inside the queue and re-queues the entries, so a throw here cannot
-    // replace the response built in the `try`. Checked with the collector
-    // pointed at a dead port — the route still answers 200 and nothing is
-    // logged unhandled.
-    //
-    // The real cost is latency: the response now waits on a round trip to the
-    // collector. That is the trade for not losing the data, and it is the
-    // right one on a platform that can freeze you. On a long-lived server you
-    // could drop this line and let the batch timer do it.
+    // Entries are batched, and a serverless function can be frozen the moment
+    // it responds. Neither call rejects, so this cannot fail the request.
+    // "Flushing before the response" in the README has what it does and does
+    // not guarantee, and what it costs.
     await flushServer();
   }
 }

@@ -137,6 +137,56 @@ them in use; they behave identically here.
 `orders/[id]`, never `orders/42`. A touchpoint per order id would make
 percentiles meaningless.
 
+## Flushing before the response
+
+[`app/api/checkout/route.js`](app/api/checkout/route.js) ends with
+`await flushServer()`. That line is worth understanding before you copy the
+route, because what it buys depends on where you deploy.
+
+Entries are batched. Without the flush they still arrive — a few hundred
+milliseconds later, when the batch timer fires. A long-lived server survives
+that gap, which is exactly why the omission is invisible in `next dev`. **A
+serverless function frozen the moment it responds does not**, and the batch is
+dropped with no error anywhere.
+
+Measured on `next build && next start` against a local collector: with the
+flush, both entries are delivered by the time the response returns; without it,
+none are at that moment.
+
+### What it does not guarantee
+
+The server queue is process-wide, and `flush()` drains it synchronously before
+awaiting the sends. Whoever drains first awaits that batch; anyone arriving
+afterwards finds it empty and returns while those sends are still outstanding.
+There are two ways in.
+
+**On Vercel this is the normal path, not a race.** The SDK auto-flushes per
+entry there — it keys off the `VERCEL` environment variable — so by the time
+`flushServer()` runs, the queue is already empty. Timing the route against a
+collector that delays its reply by two seconds shows it plainly:
+
+| | response time |
+|---|---|
+| `VERCEL` unset | **2.04s** — the flush genuinely awaits the send |
+| `VERCEL=1` | **0.02s** — queue already drained, sends still in flight |
+
+**Elsewhere it is a narrow window**, between this request's last entry and the
+flush on the next line. It matters most on a platform that runs requests
+concurrently in one process *and* throttles CPU after responding — Cloud Run —
+and cannot arise where an instance takes one request at a time, like Lambda.
+For what it is worth, it did not reproduce here at twelve concurrent requests:
+every one awaited its own send in full, because a request normally still has
+its own entries queued when it reaches the flush.
+
+Closing the window properly is an SDK fix rather than an application one:
+[simplelogs-sdk#43](https://github.com/SimpleLogs/simplelogs-sdk/issues/43).
+
+### What it costs
+
+The response now waits on a round trip to the collector. That is the trade for
+not losing the data on a platform that can freeze you. On a long-lived server
+you can drop the line and let the batch timer do it.
+
 ## Session replay
 
 On by default in `@simplelogs/next`, still gated by the sample decision and the

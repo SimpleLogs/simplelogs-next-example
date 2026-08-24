@@ -21,8 +21,15 @@ export default function CheckoutButton() {
     try {
       const res = await fetch("/api/checkout", { method: "POST" });
       ok = res.ok;
-    } catch {
-      ok = false;
+    } catch (error) {
+      // Log it rather than just swallowing it. Left unguarded this rejection
+      // would have been captured for you as an unhandled rejection; catching
+      // it to fix the status box takes that away, so put the entry back.
+      logger.log({
+        touchpoint: "checkout/click",
+        level: "error",
+        message: `Checkout request failed: ${error.message}`,
+      });
     }
 
     setStatus(ok ? "checkout ok — client and server share one trace" : "failed");
