@@ -84,14 +84,26 @@ rendering for that route.
 `SIMPLELOGS_API_ENDPOINT` is optional and only for self-hosted installs, but it
 has the same build-time trap as the client key and no prefix to signal it.
 
-The provider reads it during the layout's render and forwards it to the
-browser, and that render is prerendered — so the browser's copy is fixed at
-build. The server reads it from the environment per request.
+**Set it in both environments — wherever you build and wherever you run.**
 
-Set it only at run time and the two halves disagree: **server entries arrive at
-your collector while browser entries go to the SDK's default.** Half of every
-trace is missing, which reads as a correlation bug rather than a configuration
-one, and the browser half has left your deployment. Set it wherever you build.
+The provider reads it during the layout's render and forwards it to the
+browser, and that render is prerendered, so the browser's copy is fixed at
+build. The server reads it from the environment per request. Setting only one
+therefore splits the data rather than failing, and whichever half is left
+behind goes to the SDK's default — outside your deployment:
+
+| Set | Browser entries | Server entries |
+|---|---|---|
+| Run time only | **go to the SDK default** | your collector |
+| Build time only | your collector | **go to the SDK default** |
+| Both | your collector | your collector |
+
+Measured with one page load and one checkout against a local collector: 0 / 2,
+then 6 / 0.
+
+Either direction leaves half of every trace missing, which reads as a
+correlation bug rather than a configuration one — and that is what makes it
+expensive to diagnose.
 
 ## What you get without writing any logging code
 
