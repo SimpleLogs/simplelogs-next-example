@@ -35,10 +35,17 @@ export async function POST() {
     //
     // A long-lived server survives that gap, which is why this looks
     // unnecessary in development. A serverless function frozen the moment it
-    // responds does not, and the batch is dropped with no error anywhere. On
-    // Vercel the SDK flushes per entry by itself (it reads the VERCEL env
-    // var), but that flush is not awaited either — so this is the line that
-    // makes delivery certain rather than timing-dependent, on any platform.
+    // responds does not, and the batch is dropped with no error anywhere. The
+    // SDK auto-flushes on Vercel specifically — it keys off the VERCEL env var
+    // — so Lambda, Cloud Run and Netlify get nothing, and this line is what
+    // covers them.
+    //
+    // It is NOT a complete guarantee on Vercel itself. There the per-entry
+    // auto-flush has already drained the queue without awaiting the sends, so
+    // this call finds it empty and returns while those requests are still in
+    // flight. Timing the route against a collector that delays its reply by
+    // two seconds shows it plainly: 2.04s with VERCEL unset, 0.02s with
+    // VERCEL=1. Closing that window needs a fix in the SDK, not here.
     //
     // Safe in a `finally`: neither call rejects. The SDK catches send failures
     // inside the queue and re-queues the entries, so a throw here cannot

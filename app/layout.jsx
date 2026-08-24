@@ -8,11 +8,12 @@ export const metadata = { title: "SimpleLogs — Next.js example" };
  * The provider covers the browser: it hands the client config down through
  * context, so `useSimpleLogs()` works anywhere below it.
  *
- * It deliberately does NOT carry the server key. The server SDK reads
- * SIMPLELOGS_SERVER_KEY from the environment at request time, so `serverLogger`
- * in a route handler is configured whether or not this layout renders — which
- * matters, because `/` is statically prerendered and in production this render
- * may only ever have happened at build time.
+ * It deliberately does NOT carry the server key, and that key is never
+ * prefixed — NEXT_PUBLIC_ would ship a secret to the browser. The server SDK
+ * reads SIMPLELOGS_SERVER_KEY from the environment at request time, so
+ * `serverLogger` in a route handler is configured whether or not this layout
+ * renders — which matters, because `/` is statically prerendered and in
+ * production this render may only ever have happened at build time.
  *
  * The client key carries the NEXT_PUBLIC_ prefix because it has to reach the
  * browser, and the browser is the one place a value can only arrive by being
@@ -30,11 +31,6 @@ export const metadata = { title: "SimpleLogs — Next.js example" };
  * than at build — Docker, Kubernetes — no NEXT_PUBLIC_ variable can see it,
  * and you would instead read an unprefixed variable from a layout forced
  * dynamic.
- *
- * The server key is deliberately NOT passed and NOT prefixed. The server SDK
- * reads SIMPLELOGS_SERVER_KEY from the environment at request time, so it is
- * configured whether or not this render happens — and prefixing it would ship
- * a secret to the browser.
  */
 export default function RootLayout({ children }) {
   return (
