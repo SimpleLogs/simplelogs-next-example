@@ -39,6 +39,17 @@ export async function POST() {
     // Vercel the SDK flushes per entry by itself (it reads the VERCEL env
     // var), but that flush is not awaited either — so this is the line that
     // makes delivery certain rather than timing-dependent, on any platform.
+    //
+    // Safe in a `finally`: neither call rejects. The SDK catches send failures
+    // inside the queue and re-queues the entries, so a throw here cannot
+    // replace the response built in the `try`. Checked with the collector
+    // pointed at a dead port — the route still answers 200 and nothing is
+    // logged unhandled.
+    //
+    // The real cost is latency: the response now waits on a round trip to the
+    // collector. That is the trade for not losing the data, and it is the
+    // right one on a platform that can freeze you. On a long-lived server you
+    // could drop this line and let the batch timer do it.
     await flushServer();
   }
 }

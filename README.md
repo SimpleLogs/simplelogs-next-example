@@ -3,8 +3,10 @@
 A Next.js App Router app instrumented with
 [`@simplelogs/next`](https://www.npmjs.com/package/@simplelogs/next).
 
-The whole integration is **one provider in the root layout**. It covers the
-browser and the server — there is no second setup step for route handlers.
+The whole integration is **one provider in the root layout** plus two
+environment variables. The provider covers the browser; the server SDK reads
+its key from the environment at request time, so route handlers need no setup
+of their own.
 
 ## Setup
 

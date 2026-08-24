@@ -5,10 +5,14 @@ export const metadata = { title: "SimpleLogs — Next.js example" };
 /**
  * This is the whole integration.
  *
- * One provider covers both runtimes: it hands the client config down through
- * context, and configures the server SDK during the RSC render, so
- * `serverLogger` in a route handler and `useSimpleLogs()` in a component are
- * both ready with no second setup step.
+ * The provider covers the browser: it hands the client config down through
+ * context, so `useSimpleLogs()` works anywhere below it.
+ *
+ * It deliberately does NOT carry the server key. The server SDK reads
+ * SIMPLELOGS_SERVER_KEY from the environment at request time, so `serverLogger`
+ * in a route handler is configured whether or not this layout renders — which
+ * matters, because `/` is statically prerendered and in production this render
+ * may only ever have happened at build time.
  *
  * The client key carries the NEXT_PUBLIC_ prefix because it has to reach the
  * browser, and the browser is the one place a value can only arrive by being
