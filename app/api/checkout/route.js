@@ -1,4 +1,4 @@
-import { serverLogger } from "@simplelogs/next/server";
+import { serverLogger, flushServer } from "@simplelogs/next/server";
 
 export async function POST() {
   // A unique key, not a timestamp. start() and end() are matched on `key` in a
@@ -24,5 +24,21 @@ export async function POST() {
     // the failed request is the one you most want timed, and an unclosed start
     // records nothing at all.
     await serverLogger.end({ key });
+
+    // Flush before returning, and await it.
+    //
+    // Entries are batched behind a short timer. Measured against a local
+    // collector on `next build && next start`: with this line both entries are
+    // at the collector by the time the response returns; without it there are
+    // none at that moment and they arrive a few hundred milliseconds later,
+    // once the timer fires.
+    //
+    // A long-lived server survives that gap, which is why this looks
+    // unnecessary in development. A serverless function frozen the moment it
+    // responds does not, and the batch is dropped with no error anywhere. On
+    // Vercel the SDK flushes per entry by itself (it reads the VERCEL env
+    // var), but that flush is not awaited either — so this is the line that
+    // makes delivery certain rather than timing-dependent, on any platform.
+    await flushServer();
   }
 }

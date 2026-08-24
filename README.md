@@ -49,17 +49,33 @@ Two variables, and the difference between them is not decoration.
 | `NEXT_PUBLIC_SIMPLELOGS_CLIENT_KEY` | `NEXT_PUBLIC_` | Inlined into the client bundle at build time |
 
 **Never prefix the server key.** `NEXT_PUBLIC_` is what puts a value in the
-browser bundle, so prefixing it publishes the secret.
+browser bundle, so prefixing it publishes the secret. It does not need the
+prefix: the server SDK reads it from the environment at request time, which is
+why this example does not pass it to the provider at all.
 
-**Do prefix the client key**, even though a root layout looks like server-only
-code. This layout uses no dynamic API, so Next prerenders it at *build* time —
-an unprefixed `process.env.SIMPLELOGS_CLIENT_KEY` read here is frozen at
-whatever the build environment had. Build in CI without it and the browser
-silently receives `undefined`: nothing is captured and nothing says so. `next
-dev` hides this completely, because in dev every render is dynamic.
+**Do prefix the client key.** It has to reach the browser, and the bundle is
+the only way a value gets there. That is fine — the key is public by design and
+origin-locked in the dashboard.
 
-The client key is public by design and origin-locked in the dashboard, so the
-bundle is where it belongs.
+Be precise about what the prefix does and does not buy:
+
+- It does **not** protect you from a missing build-time value. A `NEXT_PUBLIC_`
+  variable absent at build is `undefined` in the bundle forever — exactly what
+  an unprefixed variable read from a prerendered layout would be. Both fail the
+  same way.
+- It **does** make the build-time capture explicit. The name says "this is
+  baked in", instead of it being an emergent property of whether this route
+  happened to prerender. `next build` prints which: `/` is `○ Static` here, so
+  an unprefixed read would be captured at build without anything saying so.
+
+`next dev` hides all of this, because in dev every render is dynamic. Check a
+production build before trusting either arrangement.
+
+**If you inject environment variables at boot rather than at build** — Docker,
+Kubernetes, anything that sets env on the running container — no `NEXT_PUBLIC_`
+variable can see them. Read an unprefixed variable from a layout marked
+`export const dynamic = "force-dynamic"` instead, and accept losing static
+rendering for that route.
 
 ## What you get without writing any logging code
 
