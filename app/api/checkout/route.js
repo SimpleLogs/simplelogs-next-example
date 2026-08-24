@@ -26,9 +26,13 @@ export async function POST() {
     await serverLogger.end({ key });
 
     // Entries are batched, and a serverless function can be frozen the moment
-    // it responds. Neither call rejects, so this cannot fail the request.
-    // "Flushing before the response" in the README has what it does and does
-    // not guarantee, and what it costs.
+    // it responds. Neither this nor the end() above rejects — the SDK catches
+    // send failures inside the queue — so nothing in this `finally` can
+    // replace the response built in the `try`. (That is a statement about
+    // these two calls only; start() and log() are ordinary awaits.)
+    //
+    // "Flushing before the response" in the README has what this does and
+    // does not guarantee, and what it costs.
     await flushServer();
   }
 }
