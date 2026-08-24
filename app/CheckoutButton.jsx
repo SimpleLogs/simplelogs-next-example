@@ -17,14 +17,23 @@ export default function CheckoutButton() {
     // Guarded because a rejected fetch — server down, offline — would
     // otherwise leave the box reading "ready", making a failed checkout look
     // identical to never having clicked.
+    // Both failure branches log. A visible "failed" with no entry behind it is
+    // the worst outcome for an example about logging — and catching the
+    // rejection to fix the status box would otherwise remove the unhandled
+    // rejection the SDK had been capturing for free.
     let ok = false;
     try {
       const res = await fetch("/api/checkout", { method: "POST" });
       ok = res.ok;
+
+      if (!ok) {
+        logger.log({
+          touchpoint: "checkout/click",
+          level: "error",
+          message: `Checkout failed: HTTP ${res.status}`,
+        });
+      }
     } catch (error) {
-      // Log it rather than just swallowing it. Left unguarded this rejection
-      // would have been captured for you as an unhandled rejection; catching
-      // it to fix the status box takes that away, so put the entry back.
       logger.log({
         touchpoint: "checkout/click",
         level: "error",
