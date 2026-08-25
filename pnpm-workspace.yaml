@@ -1,5 +1,0 @@
-allowBuilds:
-  sharp: set this to true or false
-  unrs-resolver: set this to true or false
-minimumReleaseAgeExclude:
-  - '@simplelogs/next@1.3.0 || 1.3.1'
