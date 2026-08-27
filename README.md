@@ -244,6 +244,12 @@ none of this is visible from the call site:
   buffer or discards it, and a deadline, a byte cap or the page unloading
   forces the decision. So nothing a rule is judging has left the page at the
   time it is judged.
+- **With no recording rules configured — as in this example — none of that
+  happens.** `shouldHold()` returns `false` on an empty rule set, so the
+  controller never engages and the recording streams as it always did. A
+  sampled session ships, console lines included. Holding is also skipped when
+  the configured rules could not drop anything anyway: an all-`record` set
+  over a `record` default has nothing to withhold for.
 - The `sessionReplay` masking options do **not** cover them. `maskAllInputs`,
   `blockClass` and `maskTextClass` mask recorded DOM, and a string passed to
   `console.log` never was DOM.
