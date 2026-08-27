@@ -111,6 +111,8 @@ expensive to diagnose.
 - **Web Vitals** — FCP, LCP, TTFB, CLS
 - **Uncaught errors** and unhandled promise rejections
 - A **deploy marker** per deployment, taken from Vercel's build environment
+- **Console output**, but only while a session is being recorded — see
+  [Session replay](#session-replay) below
 
 ## Correlation across the client/server boundary
 
@@ -216,8 +218,16 @@ you can drop the line and let the batch timer do it.
 ## Session replay
 
 On by default in `@simplelogs/next`, still gated by the sample decision and the
-switch under Settings → Session Replay. To keep rrweb from ever being
-downloaded:
+switch under Settings → Session Replay.
+
+While a recording is running, the SDK also captures the page's `console.*`
+calls into it, and they are shipped and indexed with the recording. The
+`sessionReplay` masking options do not cover them — those mask recorded DOM,
+and a string passed to `console.log` is not DOM. Pattern-based PII redaction
+does run over them, like every other recorded event. Nothing is captured while
+no recording is running.
+
+To keep rrweb from ever being downloaded, which also stops console capture:
 
 ```jsx
 config={{ clientKey, sessionReplay: { enabled: false } }}
