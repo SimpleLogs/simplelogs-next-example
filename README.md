@@ -223,8 +223,8 @@ switch under Settings → Session Replay.
 While a recording is running, the SDK also captures the page's `console.*`
 calls into it, and they are shipped and indexed with the recording.
 
-Read out of `@simplelogs/browser@1.6.0`'s `dist/replay.mjs`, since none of this
-is visible from the call site:
+Read out of `@simplelogs/browser@1.6.0` and `@simplelogs/react@1.4.5`, since
+none of this is visible from the call site:
 
 - The console methods are wrapped when the replay module loads, not when a
   recording starts — `patchConsoleForReplay()` runs at module top level. The
@@ -233,9 +233,17 @@ is visible from the call site:
   from the moment replay loads, and nothing leaves the page until a recording
   is actually running.
 - Captured lines go through the recorder like any other event. The rrweb
-  `emit` callback is `redactPiiDeep(...)` first, then the buffer — so the
-  same pattern-based PII redaction that covers recorded DOM covers console
-  arguments too.
+  `emit` callback is `redactPiiDeep(...)` first, then `facts.observe(...)`,
+  then the buffer — so the same pattern-based PII redaction that covers
+  recorded DOM covers console arguments too, and the recording-rule facts are
+  built from the recorder's own event stream rather than from a separate
+  buffer. There is nowhere for a pre-recording line to be kept.
+- A recording rule decides whether an already-running recording is **sent**,
+  not whether one starts. `RetentionController` holds the recorder's bytes
+  locally and evaluates the rules on a timer; a match either commits the held
+  buffer or discards it, and a deadline, a byte cap or the page unloading
+  forces the decision. So nothing a rule is judging has left the page at the
+  time it is judged.
 - The `sessionReplay` masking options do **not** cover them. `maskAllInputs`,
   `blockClass` and `maskTextClass` mask recorded DOM, and a string passed to
   `console.log` never was DOM.
