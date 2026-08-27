@@ -221,13 +221,30 @@ On by default in `@simplelogs/next`, still gated by the sample decision and the
 switch under Settings → Session Replay.
 
 While a recording is running, the SDK also captures the page's `console.*`
-calls into it, and they are shipped and indexed with the recording. The
-`sessionReplay` masking options do not cover them — those mask recorded DOM,
-and a string passed to `console.log` is not DOM. Pattern-based PII redaction
-does run over them, like every other recorded event. Nothing is captured while
-no recording is running.
+calls into it, and they are shipped and indexed with the recording.
 
-To keep rrweb from ever being downloaded, which also stops console capture:
+Read out of `@simplelogs/browser@1.6.0`'s `dist/replay.mjs`, since none of this
+is visible from the call site:
+
+- The console methods are wrapped when the replay module loads, not when a
+  recording starts — `patchConsoleForReplay()` runs at module top level. The
+  wrapper records nothing until there is a session: `recordConsoleLogEvent` is
+  `if (!activeSession) return`. So `console.log` is not the original function
+  from the moment replay loads, and nothing leaves the page until a recording
+  is actually running.
+- Captured lines go through the recorder like any other event. The rrweb
+  `emit` callback is `redactPiiDeep(...)` first, then the buffer — so the
+  same pattern-based PII redaction that covers recorded DOM covers console
+  arguments too.
+- The `sessionReplay` masking options do **not** cover them. `maskAllInputs`,
+  `blockClass` and `maskTextClass` mask recorded DOM, and a string passed to
+  `console.log` never was DOM.
+
+`sessionReplay.enabled` is the only lever: **there is no way to keep session
+replay and opt out of console capture.** `SessionReplayConfig` has no
+console-specific flag, and the provider only imports `@simplelogs/browser/replay`
+when the flag is on — so turning it off stops the download and the console
+patch together:
 
 ```jsx
 config={{ clientKey, sessionReplay: { enabled: false } }}
