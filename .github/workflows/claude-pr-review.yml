@@ -57,6 +57,83 @@ jobs:
             3. Violations of the repository's documented standards
             4. Missing or inadequate tests for the changed behavior
 
+            SEVERITY
+
+            Classify every finding as exactly one of: critical, major, medium,
+            minor, nitpick. Use the highest severity that honestly applies — do not
+            inflate to look thorough, and do not soften a real defect. The focus
+            list above says what to look for; severity says how to grade it, and the
+            summary is ordered by severity, so an issue found last is still reported
+            first if it grades highest.
+
+            - critical: ships broken or unsafe. Data loss or corruption, an auth
+              hole, a leaked secret or credential, a crash on a normal path. Merging
+              is not safe.
+            - major: a real bug or security weakness that will bite in production
+              but is narrower — a wrong result on a specific input, an unhandled
+              error path, a race, a silent no-op on a documented path. Should be
+              fixed before merge.
+            - medium: works today but is fragile or wrong in principle — an edge
+              case left unhandled, a leaky abstraction, a violation of a standard
+              this repository actually documents, or missing tests where this
+              repository has tests to add them to. Fix before merge or file a
+              follow-up.
+            - minor: small, low-risk improvement — an unclear name, a guard that is
+              currently unreachable, a duplicated block worth extracting. Author's
+              judgement whether to act now.
+            - nitpick: purely optional preference with no functional impact. Say
+              plainly that it is optional and never block on it.
+
+            Skip whitespace, import order, quote style, and anything else a
+            formatter or linter would settle — those are not nitpicks, they are
+            noise, whether or not this repository runs such a tool. Skip
+            praise-only comments.
+
+            COMMENT FORMAT
+
+            Every finding — every inline comment, and every finding listed in the
+            summary — takes exactly this shape:
+
+                [severity] - Short title naming the problem
+
+                Non-technical description.
+
+                ---
+
+                Technical description.
+
+            The four-space inset above is only to set the template apart in these
+            instructions. Do not indent the comment itself: an indented block
+            renders as code, which would print the `---` as three literal hyphens.
+
+            Line by line:
+            - `[severity]` is the literal bracketed word: `[nitpick]`, `[minor]`,
+              `[medium]`, `[major]` or `[critical]` — lower case, no bold, no emoji.
+              Then a space, a hyphen, a space, then the title.
+            - The title is a single line under about ten words that names the
+              problem rather than its location: "Signed-out visitors can open
+              another team's dashboard", not "Issue in route.ts".
+            - The non-technical description is two or three sentences someone who
+              cannot read the diff can follow. Say what a user or the business would
+              actually experience if this ships — no jargon, no identifiers, no
+              code, no file names. "Someone who is not signed in can open a page
+              showing another team's data", not "the session check is missing on the
+              route handler". Where a finding genuinely has no such consequence —
+              normal for a nitpick, common for a minor — say so plainly and say who
+              it does help instead, usually the next person to work on this. Never
+              invent an impact to fill the slot.
+            - `---` sits alone on its own line, and the blank line ABOVE it is the
+              one that matters. Without it, Markdown reads the `---` as underlining
+              what precedes it: the whole description is swallowed into a heading
+              and no rule is drawn at all. A blank line below is not required — keep
+              one anyway so the two halves read apart.
+            - The technical description carries the mechanism, the file and line,
+              the condition that triggers it, and a concrete suggested fix. Code
+              blocks and identifiers belong here, and only here.
+
+            Both halves are required on every finding at every severity — a nitpick
+            still gets its plain-language half.
+
             Rules for your review:
             - Only review the diff of this PR, not pre-existing code.
             - Use inline comments (mcp__github_inline_comment__create_inline_comment)
@@ -64,8 +141,16 @@ jobs:
             - Post the overall summary and verdict via
               mcp__github_comment__update_claude_comment if that tool is
               available, otherwise as a single PR comment with `gh pr comment`.
-            - Do not comment on style nitpicks, formatting, or anything a linter
-              would catch. Skip praise-only comments.
+            - Open the summary with a count by severity (e.g. "1 major, 2
+              medium, 1 nitpick"), then a one-paragraph plain-language
+              verdict a non-technical reader can act on, then the findings
+              in the format above, grouped most severe first.
+            - Drive the verdict from the highest severity present: any
+              critical or major means do not merge yet; medium means fix or
+              file a follow-up; minor and nitpick alone do not block.
+            - With no findings at all, none of that applies: say briefly
+              that the PR looks good and stop. Do not print an empty tally
+              or a verdict with nothing behind it.
             - If the PR looks good, say so briefly in the summary — do not invent
               findings to seem thorough.
           claude_args: |
