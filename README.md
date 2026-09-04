@@ -250,7 +250,7 @@ answers the question directly, so the check is one command:
 ```bash
 # No traceparent — the handler should open its own trace.
 curl -sX POST localhost:5175/api/checkout
-# {"ok":true,"joined":false,"sawTraceparent":false,"otelStarted":true,
+# {"ok":true,"joined":false,"sawTraceparent":false,"sampled":true,"otelStarted":true,
 #  "traceId":"2a022d78…","spanId":"fdf7cb01…"}
 
 # With one — it should report that same trace back.
@@ -272,15 +272,14 @@ its keep on the missing `initOtel()` and the malformed header, where
 `instrumentation-client.js`, header presence is already enough. The last two
 rows are the ones `joined` cannot reach at all — the trace genuinely does join,
 and only its delivery is in question; `otelStarted` and `sampled` are there for
-those. Each row below was measured, the first five against builds with the
-named piece removed and the last against a request with the flags byte
-changed:
+those. Each row below was measured: the baseline, three builds with the named
+piece removed, and two requests with the `traceparent` changed:
 
 | | `joined` | `sawTraceparent` | `otelStarted` | `sampled` | `traceId` |
 |---|---|---|---|---|---|
 | All four conditions met | `true` | `true` | `true` | `true` | the caller's |
 | No `instrumentation-client.js` | `false` | `false` | `true` | `true` | a fresh one |
-| No `instrumentation.js` | `false` | `true` | `false` | `true` | **absent** |
+| No `instrumentation.js` | `false` | `true` | `false` | `false` | **absent** |
 | Malformed `traceparent` | `false` | `true` | `true` | `true` | a fresh one |
 | No `serverExternalPackages` entry | **`true`** | `true` | **`false`** | `true` | the caller's |
 | Caller sent `traceparent` flags `00` | `true` | `true` | `true` | **`false`** | the caller's |
@@ -294,10 +293,9 @@ field describing *joining* reports success and only `otelStarted` dissents. See
 costs.
 
 `flags 00` is not a fault at all — it is a caller that has already decided this
-trace will not be kept. `initOtel()` passes no sampler, so OpenTelemetry's
-default `ParentBased(AlwaysOn)` honours that: the span carries the right trace
-id and is never exported. Measured, two requests differing only in the flags
-byte:
+trace will not be kept, and with the default `ParentBased` sampler the server
+honours it: the span carries the right trace id and is never exported.
+Measured, two requests differing only in the flags byte:
 
 ```
 +8123ms  /api/otlp/v1/traces   contains the flags-01 trace
@@ -305,15 +303,22 @@ byte:
          (nothing, ever, for the flags-00 trace)
 ```
 
-Worth reporting rather than inferring, because it is the one row where a check
-looking only at joining would call a delivered-nothing request clean. If you
-copy this into a system that samples, that row is the difference between "we
-lost it" and "we chose not to keep it".
+`sampled` is read off the span — `isRecording()` — rather than worked out from
+the caller's flags byte, which matters precisely for the audience this row is
+for. A system that samples is one that has configured a sampler, through
+`initOtel()` or `OTEL_TRACES_SAMPLER`, and neither is visible to this handler.
+Measured with `OTEL_TRACES_SAMPLER=always_off` and no inbound header: `sampled`
+is `false`, where a derivation from the flags byte would have said `true`.
+
+If you copy this into a system that samples, the `flags 00` row is the
+difference between "we lost it" and "we chose not to keep it".
 
 The third row is why the comparison is worth the few lines: with server tracing
 missing, the span `withTrace` opens is non-recording and carries no ids at all,
 while the header still arrives. Anything asking only "did a `traceparent` turn
-up" calls that a success.
+up" calls that a success. That non-recording span is also why `sampled` reads
+`false` there, and it is the second row a derivation from the flags byte would
+have got backwards.
 
 The browser half is the button, which reports all of these in words — including
 the last row, since a shared trace that cannot be delivered is not a success
