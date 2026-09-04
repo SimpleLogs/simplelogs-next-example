@@ -256,32 +256,59 @@ curl -sX POST localhost:5175/api/checkout
 # With one — it should report that same trace back.
 curl -sX POST -H 'traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01' \
   localhost:5175/api/checkout
-# {"ok":true,"joined":true,"sawTraceparent":true,"otelStarted":true,
+# {"ok":true,"joined":true,"sawTraceparent":true,"sampled":true,"otelStarted":true,
 #  "traceId":"4bf92f3577b34da6a3ce929d0e0e4736","spanId":"61b08643…"}
+
+# Same trace, flags 00 — joined, and deliberately not recorded.
+curl -sX POST -H 'traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00' \
+  localhost:5175/api/checkout
+# {"ok":true,"joined":true,"sawTraceparent":true,"sampled":false,"otelStarted":true, …}
 ```
 
 `joined` is the handler comparing the trace it ended up in against the one the
 request carried, rather than merely noticing the header. That distinction earns
-its keep on two of the four failure rows below — the missing `initOtel()` and
-the malformed header — where `sawTraceparent` alone reports success and
-`joined` does not. On a third, the missing `instrumentation-client.js`, header
-presence is already enough. The fourth is the one neither can reach, because
-the trace genuinely does join and only its delivery is broken; that is what
-`otelStarted` is for. Measured against builds with each piece removed:
+its keep on the missing `initOtel()` and the malformed header, where
+`sawTraceparent` alone reports success and `joined` does not. On the missing
+`instrumentation-client.js`, header presence is already enough. The last two
+rows are the ones `joined` cannot reach at all — the trace genuinely does join,
+and only its delivery is in question; `otelStarted` and `sampled` are there for
+those. Each row below was measured, the first five against builds with the
+named piece removed and the last against a request with the flags byte
+changed:
 
-| | `joined` | `sawTraceparent` | `otelStarted` | `traceId` |
-|---|---|---|---|---|
-| All four conditions met | `true` | `true` | `true` | the caller's |
-| No `instrumentation-client.js` | `false` | `false` | `true` | a fresh one |
-| No `instrumentation.js` | `false` | `true` | `false` | **absent** |
-| Malformed `traceparent` | `false` | `true` | `true` | a fresh one |
-| No `serverExternalPackages` entry | **`true`** | `true` | **`false`** | the caller's |
+| | `joined` | `sawTraceparent` | `otelStarted` | `sampled` | `traceId` |
+|---|---|---|---|---|---|
+| All four conditions met | `true` | `true` | `true` | `true` | the caller's |
+| No `instrumentation-client.js` | `false` | `false` | `true` | `true` | a fresh one |
+| No `instrumentation.js` | `false` | `true` | `false` | `true` | **absent** |
+| Malformed `traceparent` | `false` | `true` | `true` | `true` | a fresh one |
+| No `serverExternalPackages` entry | **`true`** | `true` | **`false`** | `true` | the caller's |
+| Caller sent `traceparent` flags `00` | `true` | `true` | `true` | **`false`** | the caller's |
 
-The last row is the one to know about. The trace joins perfectly and the flush
-is inert, so every field that describes *joining* reports success and only
-`otelStarted` dissents — which is why it is in the response at all. See
+The last two rows are the ones to know about, and they are the reason the
+response carries more than `joined`.
+
+`No serverExternalPackages entry` joins perfectly and flushes nothing, so every
+field describing *joining* reports success and only `otelStarted` dissents. See
 [Flushing before the response](#flushing-before-the-response) for what that
 costs.
+
+`flags 00` is not a fault at all — it is a caller that has already decided this
+trace will not be kept. `initOtel()` passes no sampler, so OpenTelemetry's
+default `ParentBased(AlwaysOn)` honours that: the span carries the right trace
+id and is never exported. Measured, two requests differing only in the flags
+byte:
+
+```
++8123ms  /api/otlp/v1/traces   contains the flags-01 trace
++8158ms  /api/otlp/v1/traces   contains the flags-01 trace
+         (nothing, ever, for the flags-00 trace)
+```
+
+Worth reporting rather than inferring, because it is the one row where a check
+looking only at joining would call a delivered-nothing request clean. If you
+copy this into a system that samples, that row is the difference between "we
+lost it" and "we chose not to keep it".
 
 The third row is why the comparison is worth the few lines: with server tracing
 missing, the span `withTrace` opens is non-recording and carries no ids at all,
@@ -545,9 +572,9 @@ download, not the build output.
 `@simplelogs/react` at the paths it has always published, so no *import* here
 has to change — every one of them goes through `@simplelogs/next`. (This
 example does declare `@simplelogs/node` in `package.json`, but for resolution
-rather than for an import: see
-[Checking it still works](#checking-it-still-works).) If you would rather depend on them directly, `@simplelogs/react`'s
-provider is the same component this example imports.
+rather than for an import: see [The integration](#the-integration).) If you
+would rather depend on them directly, `@simplelogs/react`'s provider is the
+same component this example imports.
 
 ## Other examples
 

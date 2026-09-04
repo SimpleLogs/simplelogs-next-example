@@ -34,7 +34,12 @@ export async function POST() {
   // exactly like success to anything that only asks whether the header was
   // there.
   const sawTraceparent = inbound.has("traceparent");
-  const inboundTraceId = inbound.get("traceparent")?.split("-")[1];
+  const [, inboundTraceId, , inboundFlags] =
+    inbound.get("traceparent")?.split("-") ?? [];
+
+  // The caller's sampling bit, which only matters if its trace is the one this
+  // request ends up in — see `sampled` below.
+  const parentSampled = (Number.parseInt(inboundFlags ?? "", 16) & 1) === 1;
 
   let response;
   try {
@@ -63,6 +68,24 @@ export async function POST() {
           const ids = currentTraceIds() ?? {};
           const joined = Boolean(inboundTraceId) && ids.traceId === inboundTraceId;
 
+          // Whether this span will be RECORDED, which is a different question
+          // from whether it joined. `initOtel()` passes no sampler, so
+          // OpenTelemetry's default `ParentBased(AlwaysOn)` applies: it
+          // honours the parent's bit when there IS a parent, and samples its
+          // own root when there is not.
+          //
+          // So this keys off `joined`, not off the header being present. A
+          // malformed `traceparent` arrives, fails to extract, and leaves a
+          // fresh root — which is sampled, however the unusable flags byte
+          // read. Keying off `sawTraceparent` reported that root as dropped,
+          // which is the opposite of what happens; the table in the README
+          // caught it, because every row there is measured.
+          //
+          // Worth reporting rather than inferring: a caller sending `…-00`
+          // gets a span carrying its trace id that is never exported, and that
+          // is the one state where every other field here says success.
+          const sampled = joined ? parentSampled : true;
+
           // Reported back so the page can show what happened instead of
           // claiming it. Not secret: `traceId` is the value the browser itself
           // put in the `traceparent` header on this request.
@@ -76,6 +99,7 @@ export async function POST() {
             ok: true,
             joined,
             sawTraceparent,
+            sampled,
             otelStarted: isOtelStarted(),
             ...ids,
           });

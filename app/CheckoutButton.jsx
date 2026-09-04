@@ -10,13 +10,6 @@ export default function CheckoutButton() {
   async function checkout() {
     logger.log({ touchpoint: "checkout/click", level: "info" });
 
-    // The SDK patches fetch to put the page and session ids on same-origin
-    // requests, and — once `instrumentation-client.js` has started browser
-    // tracing — a W3C `traceparent` alongside them. So the route handler's own
-    // logs join this page's trace without either side passing an id
-    // explicitly. Without that file the ids still travel and the trace does
-    // not; see "Correlation across the client/server boundary" in the README.
-    //
     // Covers the request window, which is not short: the handler flushes its
     // telemetry before responding, and that flush waits on the export — 8.2s
     // against a collector that is not answering, per "What it costs" in the
@@ -34,6 +27,12 @@ export default function CheckoutButton() {
     // for an example about logging.
     let result = null;
     try {
+      // The SDK patches fetch to put the page and session ids on same-origin
+      // requests, and — once `instrumentation-client.js` has started browser
+      // tracing — a W3C `traceparent` alongside them. So the route handler's
+      // own logs join this page's trace without either side passing an id
+      // explicitly. Without that file the ids still travel and the trace does
+      // not; see "Correlation across the client/server boundary" in the README.
       const res = await fetch("/api/checkout", { method: "POST" });
 
       if (res.ok) {
@@ -74,8 +73,19 @@ export default function CheckoutButton() {
     // before the response inert — invisible here, and lost on a host that
     // freezes at the response.
     if (result.joined) {
+      // Joined is still not the whole story. A caller can send a trace it has
+      // already decided not to record (`traceparent` flags `00`), and the
+      // default ParentBased sampler honours that — the span carries the right
+      // trace id and is never exported. Every other field here reports
+      // success, so this is the one state the box would otherwise call clean
+      // while nothing reaches the collector.
       setStatus(
         `checkout ok — client and server share trace ${result.traceId}` +
+          (result.sampled
+            ? ""
+            : "\nBut the caller marked this trace not-sampled, so the server's span " +
+              "is dropped by design rather than exported. Nothing is wrong; there is " +
+              "just nothing to find at the collector.") +
           (result.otelStarted
             ? ""
             : "\nBut the server cannot flush that trace before it responds: tracing " +
