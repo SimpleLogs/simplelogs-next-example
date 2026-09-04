@@ -437,11 +437,24 @@ That last row is what this example was quietly buying before the
 `serverExternalPackages` entry: fast responses, because nothing was being
 flushed.
 
-**The wait is bounded, and the bound is yours to set.** It is the OTLP
-exporter's export timeout, which reads the standard
-`OTEL_EXPORTER_OTLP_TIMEOUT` (and the per-signal
-`OTEL_EXPORTER_OTLP_TRACES_TIMEOUT`). Measured against the same unreachable
-collector:
+**The wait is bounded, and the bound is yours to set — but it is two bounds,
+not one.** `flushServer()` is `Promise.all([serverQueue.flush(), flushOtel()])`,
+so the response waits on the slower half, and the halves are governed
+separately:
+
+| Half | Bounded by | Default |
+|---|---|---|
+| Spans (`flushOtel()`) | `OTEL_EXPORTER_OTLP_TIMEOUT`, or the per-signal `OTEL_EXPORTER_OTLP_TRACES_TIMEOUT` | the exporter's own |
+| Entries (`serverQueue.flush()`) | `sendTimeout` — `SIMPLELOGS_SEND_TIMEOUT`, or `configureSDK({ sendTimeout })` | **10s** |
+
+Neither variable touches the other half, so lowering only the OTLP one leaves a
+stalled ingest host costing up to `sendTimeout`. The entries send does carry its
+own deadline rather than relying on the platform's: the SDK puts an
+`AbortSignal.timeout(sendTimeout)` on the request, with a comment naming the
+alternative — "without a deadline a stalled connection sits for undici's 300s
+`headersTimeout`, and stays in the queue's in-flight set that whole time".
+
+Measured against the same unreachable collector, varying the OTLP half:
 
 | `OTEL_EXPORTER_OTLP_TIMEOUT` | Response |
 |---|---|
@@ -450,8 +463,12 @@ collector:
 | `1000` | 0.95s |
 
 It is a ceiling rather than a fixed cost — at `4000` the connection error came
-back at 2.6s, before the timeout could fire. Worth setting deliberately if this
-line is going anywhere near a checkout path.
+back at 2.6s, before the timeout could fire. These runs refuse the connection
+rather than accepting and stalling, which is why the entries half returns fast
+throughout and the OTLP half is what the numbers track; a host that accepts and
+never answers is the case where `sendTimeout` becomes the number that matters.
+Worth setting both deliberately if this line is going anywhere near a checkout
+path.
 
 **A failed export is swallowed, not surfaced.** `flushOtel()` wraps each
 provider's `forceFlush()` in its own `.catch(() => {})`, and

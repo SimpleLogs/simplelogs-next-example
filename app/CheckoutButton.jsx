@@ -83,6 +83,18 @@ export default function CheckoutButton() {
     // carries no ids.
     const recorded = result.traceId ? `trace ${result.traceId}` : "no trace at all";
 
+    // A second fault worth naming on its own, for the same reason as the
+    // both-missing case below: leaving it implicit means fixing one thing and
+    // coming back for the other. Only when there IS a trace — with no trace at
+    // all, `otelStarted` is false for the reason already named below, and this
+    // would say it twice.
+    const undeliverable =
+      result.traceId && !result.otelStarted
+        ? "\nThe server also cannot flush what it did record: tracing is not started " +
+          "in this handler's module instance. See serverExternalPackages in " +
+          "next.config.mjs."
+        : "";
+
     if (!result.sawTraceparent) {
       // The browser is the missing piece here. When the server also recorded
       // nothing, that is a second missing piece rather than a consequence of
@@ -94,14 +106,16 @@ export default function CheckoutButton() {
           "handler stripped the header." +
           (result.traceId
             ? ""
-            : "\nServer tracing is not running either (instrumentation.js)."),
+            : "\nServer tracing is not running either (instrumentation.js).") +
+          undeliverable,
       );
     } else {
       setStatus(
         `checkout ok — but the server did not continue this page's trace; it recorded ${recorded}.\n` +
           "A traceparent arrived and was not joined. Either server tracing is " +
           "not running (instrumentation.js), the traceparent that arrived was " +
-          "malformed, or the handler is not passing the headers to withTrace.",
+          "malformed, or the handler is not passing the headers to withTrace." +
+          undeliverable,
       );
     }
   }
