@@ -335,11 +335,13 @@ If you copy this into a system that samples, the `flags 00` row is the
 difference between "we lost it" and "we chose not to keep it".
 
 The third row is why the comparison is worth the few lines: with server tracing
-missing, the span `withTrace` opens is non-recording and carries no ids at all,
-while the header still arrives. Anything asking only "did a `traceparent` turn
-up" calls that a success. It is also the one row of the six the old derivation
-got backwards: with no header there was nothing to derive from, so it fell to a
-`true` default while nothing was exported at all.
+missing nothing installs a context manager, so no span is ever active and the
+response carries no ids at all — while the header still arrives. Anything
+asking only "did a `traceparent` turn up" calls that a success. It is also the
+one row of the six the old derivation got backwards, and not for the reason it
+looks like: that derivation was `joined ? parentSampled : true`, and `joined`
+is `false` here, so it fell to the root default of `true` while nothing was
+exported at all. The header and its flags byte were sitting there unread.
 
 The browser half is the button, which reports all of these in words — including
 the last row, since a shared trace that cannot be delivered is not a success

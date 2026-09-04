@@ -102,9 +102,11 @@ export default function CheckoutButton() {
     }
 
     // Describes what the server ended up with, and nothing more — the cause
-    // belongs to the branches below. No id at all means it recorded nothing,
-    // which only happens with server tracing off, since a non-recording span
-    // carries no ids.
+    // belongs to the branches below. No id at all means server tracing never
+    // started: with no tracer nothing installs a context manager, so no span
+    // is active and there are no ids to read. Being unsampled does not do
+    // this — a span dropped by the sampler still carries its ids, which is
+    // exactly the flags `00` row, where the caller's trace id comes back.
     const recorded = result.traceId ? `trace ${result.traceId}` : "no trace at all";
 
     // A second fault worth naming on its own, for the same reason as the
