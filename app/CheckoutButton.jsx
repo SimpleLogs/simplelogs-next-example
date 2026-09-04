@@ -59,8 +59,21 @@ export default function CheckoutButton() {
       return;
     }
 
+    // Joined is not the whole story: the trace can be correct and undeliverable
+    // at the same time. `otelStarted` is false when this handler is a different
+    // module instance from the one that started tracing, which leaves the flush
+    // before the response inert — invisible here, and lost on a host that
+    // freezes at the response.
     if (result.joined) {
-      setStatus(`checkout ok — client and server share trace ${result.traceId}`);
+      setStatus(
+        `checkout ok — client and server share trace ${result.traceId}` +
+          (result.otelStarted
+            ? ""
+            : "\nBut the server cannot flush that trace before it responds: tracing " +
+              "is not started in this handler's module instance, so the span goes out " +
+              "on the batch timer, or not at all on a host that freezes. See " +
+              "serverExternalPackages in next.config.mjs."),
+      );
       return;
     }
 

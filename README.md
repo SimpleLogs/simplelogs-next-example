@@ -245,10 +245,13 @@ curl -sX POST -H 'traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba90
 ```
 
 `joined` is the handler comparing the trace it ended up in against the one the
-request carried — not merely noticing the header, which would report success
-for two of the four ways this breaks. `otelStarted` covers the fourth, which
-none of the other fields can see. Measured against builds with each piece
-removed:
+request carried, rather than merely noticing the header. That distinction earns
+its keep on two of the four failure rows below — the missing `initOtel()` and
+the malformed header — where `sawTraceparent` alone reports success and
+`joined` does not. On a third, the missing `instrumentation-client.js`, header
+presence is already enough. The fourth is the one neither can reach, because
+the trace genuinely does join and only its delivery is broken; that is what
+`otelStarted` is for. Measured against builds with each piece removed:
 
 | | `joined` | `sawTraceparent` | `otelStarted` | `traceId` |
 |---|---|---|---|---|
@@ -269,7 +272,9 @@ missing, the span `withTrace` opens is non-recording and carries no ids at all,
 while the header still arrives. Anything asking only "did a `traceparent` turn
 up" calls that a success.
 
-The browser half is the button, which reports the joining states in words.
+The browser half is the button, which reports all of these in words — including
+the last row, since a shared trace that cannot be delivered is not a success
+worth printing unqualified.
 
 Four conditions have to hold, and any one of them going missing leaves a green
 build:
@@ -382,6 +387,30 @@ The server queue is process-wide, and `flush()` drains it synchronously before
 awaiting the sends. Whoever drains first awaits that batch; anyone arriving
 afterwards finds it empty and returns while those sends are still outstanding.
 There are two ways in.
+
+**A span export that fails is swallowed, not surfaced.** `flushOtel()` wraps
+each provider's `forceFlush()` in its own `.catch(() => {})`, and
+`BatchSpanProcessor.forceFlush()` rejects on an export failure or an export
+timeout. That swallow is deliberate — it is what stops a collector outage
+turning a working checkout into a 500 from inside a `finally` — but it means a
+resolved `flushServer()` says the export was attempted, not that it landed.
+
+**And it waits for that attempt.** Swallowed is not the same as skipped: the
+flush still awaits the export, so an unreachable collector costs the request
+the OTLP export timeout before the response goes out. Measured on this example,
+same build, one POST to `/api/checkout`:
+
+| Collector | Response time |
+|---|---|
+| Reachable | 0.06s |
+| Unreachable | **8.21s** |
+| Unreachable, with the flush inert (no `serverExternalPackages`) | 0.01s |
+
+The third row is what the pre-`serverExternalPackages` version was quietly
+buying: fast responses, because nothing was being flushed. That is the trade
+this line makes — a request that waits on telemetry it cannot deliver, rather
+than a trace silently dropped — and it is worth knowing before pointing a
+production deployment at a collector that can go away.
 
 **On Vercel this is the normal path, not a race.** The SDK auto-flushes per
 entry there — it keys off the `VERCEL` environment variable — so by the time
