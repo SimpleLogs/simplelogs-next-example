@@ -144,15 +144,25 @@ export default function CheckoutButton() {
 
     // A second fault worth naming on its own, for the same reason as the
     // both-missing case below: leaving it implicit means fixing one thing and
-    // coming back for the other. Only when there IS a trace AND it is being
-    // kept — an unsampled span never enters the batch buffer, so "it will go
-    // out late instead of now" would be false, and printed next to `notKept`
-    // it would contradict it outright.
+    // coming back for the other.
+    //
+    // Gated on the FAULT, not on the sampling decision — same as the joined
+    // branch above, and for the same reason: `otelStarted` is the missing
+    // `serverExternalPackages` entry, which costs delivery on every request,
+    // so a per-request decision must not decide whether it gets named. The
+    // wording is what keys off `sampled`, because an unsampled span never
+    // enters the batch buffer: "it will go out late instead of now" would be
+    // false, and printed next to `notKept` it would contradict it outright.
     const undeliverable =
-      result.traceId && result.sampled && !result.otelStarted
-        ? "\nThe server also cannot flush what it did record: tracing is not started " +
-          "in this handler's module instance. See serverExternalPackages in " +
-          "next.config.mjs."
+      result.traceId && !result.otelStarted
+        ? result.sampled
+          ? "\nThe server also cannot flush what it did record: tracing is not started " +
+            "in this handler's module instance. See serverExternalPackages in " +
+            "next.config.mjs."
+          : "\nSeparately, server tracing is not started in this handler's module " +
+            "instance, so the flush before the response does nothing for any request " +
+            "— including the ones that are being kept. See serverExternalPackages in " +
+            "next.config.mjs."
         : "";
 
     if (!result.sawTraceparent) {

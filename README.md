@@ -217,8 +217,8 @@ own package rather than as two installs.
 
 **The trace** rides the W3C `traceparent` header, through OpenTelemetry's
 context rather than the SDK's correlation. That is what puts the server work
-*inside* the page's tree rather than beside it, and it takes both halves of the
-opt-in:
+*inside* the page's tree rather than beside it, and it takes three pieces, one
+in the browser and two on the server:
 
 1. `initBrowserOtel()` in [`instrumentation-client.js`](instrumentation-client.js)
    opens the page-scoped root span. Without an active span there is nothing to
