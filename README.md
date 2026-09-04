@@ -332,11 +332,32 @@ dropped with no error anywhere.
 
 The server's **span** is batched too — `initOtel()` installs a
 `BatchSpanProcessor`, so the trace this example exists to demonstrate has the
-same loss mode as the entries. The same one line covers it:
-`flushServer()` is `Promise.all([serverQueue.flush(), flushOtel()])`, and
-`flushOtel()` force-flushes the tracer, logger and meter providers. Nothing
-extra to call — but worth knowing that removing that line would cost the trace
-as well as the logs.
+same loss mode as the entries. `flushServer()` covers it, being
+`Promise.all([serverQueue.flush(), flushOtel()])`. But two things have to be
+true for that to reach this handler's own span, and neither is obvious:
+
+**The flush runs outside `withTrace`, not inside it.** A span reaches the batch
+processor when it ends, and `withTrace` ends its span *after* the callback
+settles — that is what makes it time the callback. A flush within the callback
+therefore runs while this request's span is still open and sweeps up everything
+except it. Measured against a local collector, naming the span uniquely so the
+export carrying it could be identified:
+
+| Flush placement | The handler's span is exported |
+|---|---|
+| Inside the `withTrace` callback | **5.0s after the response**, on the batch timer |
+| After `withTrace` returns | 39ms **before** the response |
+
+**`@simplelogs/node` is in `serverExternalPackages`.** Bundled, `instrumentation.js`
+and the route handler get separate copies of the module holding the providers,
+so `initOtel()` starts them in one and `flushServer()` force-flushes nothing in
+the other. That failure is invisible: `withTrace` resolves its tracer through
+OpenTelemetry's *global* provider, so traces still join correctly and only the
+flush goes quiet. A probe route reported `isOtelStarted() === false` inside the
+handler on the very request it also reported a correctly joined trace for.
+
+Both are in this example. Remove either and the logs still arrive on time while
+the trace does not.
 
 Measured on `next build && next start` against a local collector: with the
 flush, both entries are delivered by the time the response returns; without it,
