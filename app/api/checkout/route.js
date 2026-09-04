@@ -64,33 +64,48 @@ export async function POST() {
           const ids = currentTraceIds() ?? {};
           const joined = Boolean(inboundTraceId) && ids.traceId === inboundTraceId;
 
-          // Whether this span will be EXPORTED, which is a different question
-          // from whether it joined, and read off the span context rather than
-          // worked out from the caller's flags byte — because the server gets
-          // a say that the inbound header cannot show. A sampler set through
-          // `OTEL_TRACES_SAMPLER` can drop a trace the caller marked keep, and
-          // this file never sees it. (There is no sampler option on
-          // `initOtel()` to worry about alongside it: it takes
-          // `instrumentations`, `metricExportIntervalMs` and `diagnostics`,
-          // and hands the provider none of them as a sampler.)
+          // Whether the exporter will take this span — a different question
+          // from whether it joined, and NOT the same as whether the span is
+          // exported before the response, which is `otelStarted` below. This
+          // flag is necessary and not sufficient.
+          //
+          // Read off the span context rather than worked out from the caller's
+          // flags byte, because the server gets a say the inbound header
+          // cannot show: a sampler set through `OTEL_TRACES_SAMPLER` can drop
+          // a trace the caller marked keep, and this file never sees it.
+          // (There is no sampler option on `initOtel()` to worry about
+          // alongside it: it takes `instrumentations`, `metricExportIntervalMs`
+          // and `diagnostics`, and hands the provider none of them as a
+          // sampler. `OTEL_TRACES_SAMPLER` is the only lever there is.)
           //
           // The SAMPLED flag is the predicate the exporter itself applies —
           // `BatchSpanProcessor` drops any span whose flag is clear, before
           // anything else looks at it. `isRecording()` sits next to this and
           // answers a different question: it is `_ended === false`, so it is
-          // liveness, and it only tracks sampling because a NOT_RECORD
-          // decision hands back a non-recording span. A RECORD-without-SAMPLED
-          // decision gets a live span that is still never exported, and would
-          // read `true` here under a field named `sampled`.
+          // liveness, and it tracks sampling only because a NOT_RECORD
+          // decision hands back a non-recording span. The two come apart on a
+          // RECORD-without-SAMPLED decision, which keeps a live span the
+          // exporter still drops. Nothing reachable here produces that —
+          // `OTEL_TRACES_SAMPLER` can only build AlwaysOn, AlwaysOff or
+          // TraceIdRatioBased, and none of them returns RECORD — so this is
+          // the read meaning what the field's name says, not a bug fixed.
           //
-          // With no tracer started there is no active span at all, so nothing
-          // is read and the `?? 0` answers instead: not observed, reported as
-          // not kept. `otelStarted` and a missing `traceId` are what separate
-          // that from a decision actually taken.
+          // With no tracer started there is no active span to read, so the
+          // `?? 0` answers instead: not observed, reported as not kept. That
+          // holds only because nothing else in this app registers a context
+          // manager — `initOtel()` is the sole caller of
+          // `setGlobalContextManager` in the tree, and `instrumentations: []`
+          // keeps it that way. If something else registered one, the
+          // no-tracer case would find the caller's own span context, flags and
+          // all, and report `true` with no exporter in the process.
+          // `otelStarted` and a missing `traceId` are what separate the two
+          // today.
           //
-          // Worth reporting because a caller sending `traceparent` flags `00`
-          // gets a span carrying its trace id that is never exported, and that
-          // is the one state where every other field here says success.
+          // Worth reporting because a span can carry the right trace id and
+          // never be exported, and that is the one shape of failure where
+          // every other field here says success. Two things produce it: a
+          // caller sending `traceparent` flags `00`, and a sampler on the
+          // server — which is why nothing here names which.
           //
           // `otel` is `@opentelemetry/api`, re-exported by the SDK, so reading
           // this costs no dependency of its own.

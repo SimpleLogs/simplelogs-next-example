@@ -274,8 +274,9 @@ rows are the ones `joined` cannot reach at all — the trace genuinely does join
 and only its delivery is in question; `otelStarted` and `sampled` are there for
 those. Every row below was measured — six in all: the baseline, three against
 builds with the named piece removed, and two against requests with a changed
-`traceparent`. They are interleaved rather than grouped, since the order that
-reads best is roughly how likely each is to bite you:
+`traceparent`. They are interleaved rather than grouped by how they were
+produced, because the interesting comparisons are between neighbours rather
+than within those groups:
 
 | | `joined` | `sawTraceparent` | `otelStarted` | `sampled` | `traceId` |
 |---|---|---|---|---|---|
@@ -298,7 +299,8 @@ costs.
 trace will not be kept. `initOtel()` has no sampler option and passes none, so
 unless `OTEL_TRACES_SAMPLER` says otherwise OpenTelemetry's default
 `ParentBased(AlwaysOn)` honours the caller: the span carries the right trace id
-and is never exported. Measured, two requests differing only in the flags byte:
+and is never exported. Two requests were sent, differing only in the flags
+byte. Everything the collector received afterwards:
 
 ```
 +8123ms  /api/otlp/v1/traces   contains the flags-01 trace
@@ -307,10 +309,12 @@ and is never exported. Measured, two requests differing only in the flags byte:
 ```
 
 `sampled` is read off the span context rather than worked out from the caller's
-flags byte, which matters precisely for the audience this row is for. The
+flags byte, which matters precisely for the audience that last row is for. The
 server gets a say the inbound header cannot show: `OTEL_TRACES_SAMPLER` can
-drop a trace the caller marked keep, and the handler never sees it. Two
-measurements, both with the caller sending flags `01`:
+drop a trace the caller marked keep, and the handler never sees it. That is a
+seventh state, not in the table because it needs an environment variable rather
+than a build or a header — two measurements, both with the caller sending flags
+`01`:
 
 ```
 (no sampler set)                    sampled true

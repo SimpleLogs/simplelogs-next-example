@@ -91,7 +91,7 @@ export default function CheckoutButton() {
             : "\nBut this trace is not being kept: a sampling decision — the caller's " +
               "traceparent flags, or a sampler on the server — left the span unexported. " +
               "Nothing is wrong; there is just nothing to find at the collector.") +
-          (result.otelStarted
+          (result.otelStarted || !result.sampled
             ? ""
             : "\nBut the server cannot flush that trace before it responds: tracing " +
               "is not started in this handler's module instance, so the span goes out " +
@@ -109,27 +109,29 @@ export default function CheckoutButton() {
     // exactly the flags `00` row, where the caller's trace id comes back.
     const recorded = result.traceId ? `trace ${result.traceId}` : "no trace at all";
 
-    // A second fault worth naming on its own, for the same reason as the
-    // both-missing case below: leaving it implicit means fixing one thing and
-    // coming back for the other. Only when there IS a trace — with no trace at
-    // all, `otelStarted` is false for the reason already named below, and this
-    // would say it twice.
-    const undeliverable =
-      result.traceId && !result.otelStarted
-        ? "\nThe server also cannot flush what it did record: tracing is not started " +
-          "in this handler's module instance. See serverExternalPackages in " +
-          "next.config.mjs."
-        : "";
-
     // Reachable here too, and easy to miss: a server-side sampler drops the
     // fresh root the same way it drops a joined trace, so the branches below
     // can name a trace id that nothing will ever export. Gated on there being
-    // an id, because with no trace at all `sampled` is false for the reason
-    // those branches already give.
+    // an id: with no trace at all `sampled` is false because nothing was
+    // observed, which the `!sawTraceparent` branch already attributes and the
+    // other branch lists among its candidates.
     const notKept =
       result.traceId && !result.sampled
-        ? "\nThat trace is also not being kept — a sampler dropped it, so it will not " +
-          "reach the collector under that id either."
+        ? "\nWhatever the cause above, that trace is not being kept: a sampler dropped " +
+          "it, so nothing reaches the collector under that id."
+        : "";
+
+    // A second fault worth naming on its own, for the same reason as the
+    // both-missing case below: leaving it implicit means fixing one thing and
+    // coming back for the other. Only when there IS a trace AND it is being
+    // kept — an unsampled span never enters the batch buffer, so "it will go
+    // out late instead of now" would be false, and printed next to `notKept`
+    // it would contradict it outright.
+    const undeliverable =
+      result.traceId && result.sampled && !result.otelStarted
+        ? "\nThe server also cannot flush what it did record: tracing is not started " +
+          "in this handler's module instance. See serverExternalPackages in " +
+          "next.config.mjs."
         : "";
 
     if (!result.sawTraceparent) {
@@ -144,8 +146,8 @@ export default function CheckoutButton() {
           (result.traceId
             ? ""
             : "\nServer tracing is not running either (instrumentation.js).") +
-          undeliverable +
-          notKept,
+          notKept +
+          undeliverable,
       );
     } else {
       setStatus(
@@ -153,8 +155,8 @@ export default function CheckoutButton() {
           "A traceparent arrived and was not joined. Either server tracing is " +
           "not running (instrumentation.js), the traceparent that arrived was " +
           "malformed, or the handler is not passing the headers to withTrace." +
-          undeliverable +
-          notKept,
+          notKept +
+          undeliverable,
       );
     }
   }

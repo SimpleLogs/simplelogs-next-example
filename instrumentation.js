@@ -4,8 +4,10 @@
  * This is the other half of `instrumentation-client.js`. The browser sends a
  * `traceparent`; `withTrace()` in a route handler continues it. Both steps
  * need a real tracer and a context manager, and this is what installs them —
- * without it `withTrace()` still runs your function, but the span it opens is
- * non-recording and carries no ids, so the join silently produces nothing.
+ * without it `withTrace()` still runs your function, but nothing installs a
+ * context manager, so the span it opens is never active and no id can be read
+ * back off it. The span itself is fine, and does carry the caller's ids; it is
+ * simply unreachable, so the join silently produces nothing.
  *
  * The runtime check is not optional, though not for the reason usually given.
  * The edge runtime does have `AsyncLocalStorage` — Next polyfills it there and
