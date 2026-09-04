@@ -8,10 +8,10 @@ environment variables. The provider covers the browser; the server SDK reads
 its key from the environment at request time, so route handlers need no setup
 of their own.
 
-Tracing is a further opt-in: two instrumentation files and one call in the
-route handler. All of it is optional — logging, timings, page views and Web
-Vitals work without any of it — and together it is what makes a click and the
-server work it caused one trace rather than two.
+Tracing is a further opt-in: two instrumentation files, one call in the route
+handler and one line of build config. All of it is optional — logging, timings,
+page views and Web Vitals work without any of it — and together it is what makes
+a click and the server work it caused one trace rather than two.
 
 ## Setup
 
@@ -55,9 +55,17 @@ starts one:
   `traceparent` on outgoing same-origin `fetch` calls.
 - [`instrumentation.js`](instrumentation.js) calls `initOtel()` — the tracer
   and context manager the server needs to continue that trace.
+- [`next.config.mjs`](next.config.mjs) lists `@simplelogs/node` in
+  `serverExternalPackages`. Without it `initOtel()` and `flushServer()` land in
+  separate module instances, and the flush before the response is silently
+  inert — the trace still joins, and the server's own span is lost on a host
+  that freezes at the response.
 
-See [Correlation across the client/server boundary](#correlation-across-the-clientserver-boundary)
-for what each half is actually doing.
+The first three are what make the trace *join*; the fourth is what gets it
+*delivered*. See
+[Correlation across the client/server boundary](#correlation-across-the-clientserver-boundary)
+for what each is doing, and [Checking it still works](#checking-it-still-works)
+for how to tell which one is missing.
 
 ## Keys
 
@@ -388,30 +396,6 @@ awaiting the sends. Whoever drains first awaits that batch; anyone arriving
 afterwards finds it empty and returns while those sends are still outstanding.
 There are two ways in.
 
-**A span export that fails is swallowed, not surfaced.** `flushOtel()` wraps
-each provider's `forceFlush()` in its own `.catch(() => {})`, and
-`BatchSpanProcessor.forceFlush()` rejects on an export failure or an export
-timeout. That swallow is deliberate — it is what stops a collector outage
-turning a working checkout into a 500 from inside a `finally` — but it means a
-resolved `flushServer()` says the export was attempted, not that it landed.
-
-**And it waits for that attempt.** Swallowed is not the same as skipped: the
-flush still awaits the export, so an unreachable collector costs the request
-the OTLP export timeout before the response goes out. Measured on this example,
-same build, one POST to `/api/checkout`:
-
-| Collector | Response time |
-|---|---|
-| Reachable | 0.06s |
-| Unreachable | **8.21s** |
-| Unreachable, with the flush inert (no `serverExternalPackages`) | 0.01s |
-
-The third row is what the pre-`serverExternalPackages` version was quietly
-buying: fast responses, because nothing was being flushed. That is the trade
-this line makes — a request that waits on telemetry it cannot deliver, rather
-than a trace silently dropped — and it is worth knowing before pointing a
-production deployment at a collector that can go away.
-
 **On Vercel this is the normal path, not a race.** The SDK auto-flushes per
 entry there — it keys off the `VERCEL` environment variable — so by the time
 `flushServer()` runs, the queue is already empty. Timing the route against a
@@ -435,9 +419,46 @@ Closing the window properly is an SDK fix rather than an application one:
 
 ### What it costs
 
-The response now waits on a round trip to the collector. That is the trade for
-not losing the data on a platform that can freeze you. On a long-lived server
-you can drop the line and let the batch timer do it.
+The response waits on a round trip to the collector. That is the trade for not
+losing the data on a platform that can freeze you. On a long-lived server you
+can drop the line and let the batch timer do it.
+
+**A collector that does not answer costs far more than one that does**, because
+the flush waits for the attempt rather than skipping it. Measured on this
+example, one POST to `/api/checkout`:
+
+| Collector | Response |
+|---|---|
+| Reachable | 0.06s |
+| Unreachable | **8.2s** |
+| Unreachable, flush inert (no `serverExternalPackages`) | 0.01s |
+
+That last row is what this example was quietly buying before the
+`serverExternalPackages` entry: fast responses, because nothing was being
+flushed.
+
+**The wait is bounded, and the bound is yours to set.** It is the OTLP
+exporter's export timeout, which reads the standard
+`OTEL_EXPORTER_OTLP_TIMEOUT` (and the per-signal
+`OTEL_EXPORTER_OTLP_TRACES_TIMEOUT`). Measured against the same unreachable
+collector:
+
+| `OTEL_EXPORTER_OTLP_TIMEOUT` | Response |
+|---|---|
+| unset | 8.2s |
+| `4000` | 2.6s |
+| `1000` | 0.95s |
+
+It is a ceiling rather than a fixed cost — at `4000` the connection error came
+back at 2.6s, before the timeout could fire. Worth setting deliberately if this
+line is going anywhere near a checkout path.
+
+**A failed export is swallowed, not surfaced.** `flushOtel()` wraps each
+provider's `forceFlush()` in its own `.catch(() => {})`, and
+`BatchSpanProcessor.forceFlush()` rejects on an export failure or an export
+timeout. That swallow is deliberate — it is what stops a collector outage
+turning a working checkout into a 500 from inside a `finally` — but it means a
+resolved `flushServer()` says the export was attempted, not that it landed.
 
 ## Session replay
 
