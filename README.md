@@ -159,13 +159,20 @@ environment at runtime.
 
 Browser tracing needs no endpoint of its own. With `SIMPLELOGS_API_ENDPOINT`
 pointed at `http://127.0.0.1:9999/api/v1`, one page load and one checkout put
-every browser signal on that host and nothing anywhere else:
+the browser's signals on that host and nothing anywhere else. Observed in that
+window:
 
 ```
 1x  http://127.0.0.1:9999/api/otlp/v1/traces
 1x  http://127.0.0.1:9999/api/otlp/v1/logs
 2x  http://127.0.0.1:9999/api/v1/replay/settings
 ```
+
+That is a destination check, not a complete inventory. The entry sends are the
+`/enqueue` row of the table above, resolved per send from the same forwarded
+config, so they land on the same host — but the entry queue batches on its own
+schedule, so whether one falls inside any given window is a matter of when you
+stop watching. The six browser entries counted earlier go there.
 
 **`SIMPLELOGS_OTLP_BROWSER_ENDPOINT`** moves the browser's OTLP signals — its
 traces and logs — to a different host from its entries, for a deployment whose
@@ -334,7 +341,9 @@ applies — `BatchSpanProcessor` drops any span whose flag is clear. `isRecordin
 is the near miss: it means the span has not ended yet, and tracks sampling only
 because a not-recorded decision hands back a non-recording span. A
 record-but-do-not-sample decision keeps a live span that is still never
-exported, and would read `true` under a field named `sampled`.
+exported, and would read `true` under a field named `sampled`. No
+`OTEL_TRACES_SAMPLER` value produces that decision, though, so this is the read
+meaning what the field's name says rather than a bug being fixed.
 
 The `No instrumentation.js` row reads nothing at all — with no tracer there is
 no active span, so the fallback answers, and `false` there means "nothing
