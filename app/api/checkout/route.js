@@ -64,17 +64,29 @@ export async function POST() {
           const ids = currentTraceIds() ?? {};
           const joined = Boolean(inboundTraceId) && ids.traceId === inboundTraceId;
 
-          // Whether this span will be RECORDED, which is a different question
-          // from whether it joined — and read off the span rather than worked
-          // out, because every derivation of it encodes an assumption.
+          // Whether this span will be EXPORTED, which is a different question
+          // from whether it joined, and read off the span context rather than
+          // worked out from the caller's flags byte — because the server gets
+          // a say that the inbound header cannot show. A sampler set through
+          // `OTEL_TRACES_SAMPLER` can drop a trace the caller marked keep, and
+          // this file never sees it. (There is no sampler option on
+          // `initOtel()` to worry about alongside it: it takes
+          // `instrumentations`, `metricExportIntervalMs` and `diagnostics`,
+          // and hands the provider none of them as a sampler.)
           //
-          // `isRecording()` is the decision itself: the sampler has already
-          // run by the time `withTrace` hands control back, and a
-          // non-recording span is never exported. That makes this correct
-          // under a sampler passed to `initOtel()` or set through
-          // `OTEL_TRACES_SAMPLER`, neither of which this file can see — and it
-          // is `false` when no tracer started at all, where an inference from
-          // the caller's flags byte would have said `true`.
+          // The SAMPLED flag is the predicate the exporter itself applies —
+          // `BatchSpanProcessor` drops any span whose flag is clear, before
+          // anything else looks at it. `isRecording()` sits next to this and
+          // answers a different question: it is `_ended === false`, so it is
+          // liveness, and it only tracks sampling because a NOT_RECORD
+          // decision hands back a non-recording span. A RECORD-without-SAMPLED
+          // decision gets a live span that is still never exported, and would
+          // read `true` here under a field named `sampled`.
+          //
+          // With no tracer started there is no active span at all, so nothing
+          // is read and the `?? 0` answers instead: not observed, reported as
+          // not kept. `otelStarted` and a missing `traceId` are what separate
+          // that from a decision actually taken.
           //
           // Worth reporting because a caller sending `traceparent` flags `00`
           // gets a span carrying its trace id that is never exported, and that
@@ -82,7 +94,9 @@ export async function POST() {
           //
           // `otel` is `@opentelemetry/api`, re-exported by the SDK, so reading
           // this costs no dependency of its own.
-          const sampled = otel.trace.getActiveSpan()?.isRecording() ?? false;
+          const spanContext = otel.trace.getActiveSpan()?.spanContext();
+          const sampled =
+            ((spanContext?.traceFlags ?? 0) & otel.TraceFlags.SAMPLED) !== 0;
 
           // Reported back so the page can show what happened instead of
           // claiming it. Not secret: `traceId` is the value the browser itself

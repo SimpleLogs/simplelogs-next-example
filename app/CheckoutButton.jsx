@@ -73,19 +73,24 @@ export default function CheckoutButton() {
     // before the response inert — invisible here, and lost on a host that
     // freezes at the response.
     if (result.joined) {
-      // Joined is still not the whole story. A caller can send a trace it has
-      // already decided not to record (`traceparent` flags `00`), and the
-      // default ParentBased sampler honours that — the span carries the right
-      // trace id and is never exported. Every other field here reports
-      // success, so this is the one state the box would otherwise call clean
-      // while nothing reaches the collector.
+      // Joined is still not the whole story. The span can carry the right
+      // trace id and never be exported, because something decided not to keep
+      // it — the caller, by sending `traceparent` flags `00`, or a sampler on
+      // the server. Every other field here reports success, so this is the one
+      // state the box would otherwise call clean while nothing reaches the
+      // collector.
+      //
+      // Which of the two decided is deliberately not claimed. `sampled` is the
+      // server reporting the decision it ended up with, and a server-side
+      // sampler can drop a trace the caller marked keep; naming the caller
+      // here would be right in the common case and wrong in that one.
       setStatus(
         `checkout ok — client and server share trace ${result.traceId}` +
           (result.sampled
             ? ""
-            : "\nBut the caller marked this trace not-sampled, so the server's span " +
-              "is dropped by design rather than exported. Nothing is wrong; there is " +
-              "just nothing to find at the collector.") +
+            : "\nBut this trace is not being kept: a sampling decision — the caller's " +
+              "traceparent flags, or a sampler on the server — left the span unexported. " +
+              "Nothing is wrong; there is just nothing to find at the collector.") +
           (result.otelStarted
             ? ""
             : "\nBut the server cannot flush that trace before it responds: tracing " +
@@ -114,6 +119,17 @@ export default function CheckoutButton() {
           "next.config.mjs."
         : "";
 
+    // Reachable here too, and easy to miss: a server-side sampler drops the
+    // fresh root the same way it drops a joined trace, so the branches below
+    // can name a trace id that nothing will ever export. Gated on there being
+    // an id, because with no trace at all `sampled` is false for the reason
+    // those branches already give.
+    const notKept =
+      result.traceId && !result.sampled
+        ? "\nThat trace is also not being kept — a sampler dropped it, so it will not " +
+          "reach the collector under that id either."
+        : "";
+
     if (!result.sawTraceparent) {
       // The browser is the missing piece here. When the server also recorded
       // nothing, that is a second missing piece rather than a consequence of
@@ -126,7 +142,8 @@ export default function CheckoutButton() {
           (result.traceId
             ? ""
             : "\nServer tracing is not running either (instrumentation.js).") +
-          undeliverable,
+          undeliverable +
+          notKept,
       );
     } else {
       setStatus(
@@ -134,7 +151,8 @@ export default function CheckoutButton() {
           "A traceparent arrived and was not joined. Either server tracing is " +
           "not running (instrumentation.js), the traceparent that arrived was " +
           "malformed, or the handler is not passing the headers to withTrace." +
-          undeliverable,
+          undeliverable +
+          notKept,
       );
     }
   }

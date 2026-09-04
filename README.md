@@ -272,8 +272,10 @@ its keep on the missing `initOtel()` and the malformed header, where
 `instrumentation-client.js`, header presence is already enough. The last two
 rows are the ones `joined` cannot reach at all — the trace genuinely does join,
 and only its delivery is in question; `otelStarted` and `sampled` are there for
-those. Each row below was measured: the baseline, three builds with the named
-piece removed, and two requests with the `traceparent` changed:
+those. Every row below was measured — six in all: the baseline, three against
+builds with the named piece removed, and two against requests with a changed
+`traceparent`. They are interleaved rather than grouped, since the order that
+reads best is roughly how likely each is to bite you:
 
 | | `joined` | `sawTraceparent` | `otelStarted` | `sampled` | `traceId` |
 |---|---|---|---|---|---|
@@ -293,9 +295,10 @@ field describing *joining* reports success and only `otelStarted` dissents. See
 costs.
 
 `flags 00` is not a fault at all — it is a caller that has already decided this
-trace will not be kept, and with the default `ParentBased` sampler the server
-honours it: the span carries the right trace id and is never exported.
-Measured, two requests differing only in the flags byte:
+trace will not be kept. `initOtel()` has no sampler option and passes none, so
+unless `OTEL_TRACES_SAMPLER` says otherwise OpenTelemetry's default
+`ParentBased(AlwaysOn)` honours the caller: the span carries the right trace id
+and is never exported. Measured, two requests differing only in the flags byte:
 
 ```
 +8123ms  /api/otlp/v1/traces   contains the flags-01 trace
@@ -303,12 +306,30 @@ Measured, two requests differing only in the flags byte:
          (nothing, ever, for the flags-00 trace)
 ```
 
-`sampled` is read off the span — `isRecording()` — rather than worked out from
-the caller's flags byte, which matters precisely for the audience this row is
-for. A system that samples is one that has configured a sampler, through
-`initOtel()` or `OTEL_TRACES_SAMPLER`, and neither is visible to this handler.
-Measured with `OTEL_TRACES_SAMPLER=always_off` and no inbound header: `sampled`
-is `false`, where a derivation from the flags byte would have said `true`.
+`sampled` is read off the span context rather than worked out from the caller's
+flags byte, which matters precisely for the audience this row is for. The
+server gets a say the inbound header cannot show: `OTEL_TRACES_SAMPLER` can
+drop a trace the caller marked keep, and the handler never sees it. Two
+measurements, both with the caller sending flags `01`:
+
+```
+(no sampler set)                    sampled true
+OTEL_TRACES_SAMPLER=always_off      sampled false
+```
+
+A derivation from the flags byte reports `true` for both.
+
+What is read is the SAMPLED flag, which is the predicate the exporter itself
+applies — `BatchSpanProcessor` drops any span whose flag is clear. `isRecording()`
+is the near miss: it means the span has not ended yet, and tracks sampling only
+because a not-recorded decision hands back a non-recording span. A
+record-but-do-not-sample decision keeps a live span that is still never
+exported, and would read `true` under a field named `sampled`.
+
+The `No instrumentation.js` row reads nothing at all — with no tracer there is
+no active span, so the fallback answers, and `false` there means "nothing
+observed" rather than "a sampler said no". `otelStarted` and the missing
+`traceId` are what tell those two apart; `sampled` alone does not.
 
 If you copy this into a system that samples, the `flags 00` row is the
 difference between "we lost it" and "we chose not to keep it".
@@ -316,9 +337,9 @@ difference between "we lost it" and "we chose not to keep it".
 The third row is why the comparison is worth the few lines: with server tracing
 missing, the span `withTrace` opens is non-recording and carries no ids at all,
 while the header still arrives. Anything asking only "did a `traceparent` turn
-up" calls that a success. That non-recording span is also why `sampled` reads
-`false` there, and it is the second row a derivation from the flags byte would
-have got backwards.
+up" calls that a success. It is also the one row of the six the old derivation
+got backwards: with no header there was nothing to derive from, so it fell to a
+`true` default while nothing was exported at all.
 
 The browser half is the button, which reports all of these in words — including
 the last row, since a shared trace that cannot be delivered is not a success
