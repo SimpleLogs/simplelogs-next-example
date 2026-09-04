@@ -234,41 +234,52 @@ answers the question directly, so the check is one command:
 ```bash
 # No traceparent — the handler should open its own trace.
 curl -sX POST localhost:5175/api/checkout
-# {"ok":true,"joined":false,"sawTraceparent":false,"traceId":"2a022d78…"}
+# {"ok":true,"joined":false,"sawTraceparent":false,"otelStarted":true,
+#  "traceId":"2a022d78…","spanId":"fdf7cb01…"}
 
 # With one — it should report that same trace back.
 curl -sX POST -H 'traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01' \
   localhost:5175/api/checkout
-# {"ok":true,"joined":true,"sawTraceparent":true,"traceId":"4bf92f3577b34da6a3ce929d0e0e4736"}
+# {"ok":true,"joined":true,"sawTraceparent":true,"otelStarted":true,
+#  "traceId":"4bf92f3577b34da6a3ce929d0e0e4736","spanId":"61b08643…"}
 ```
 
 `joined` is the handler comparing the trace it ended up in against the one the
 request carried — not merely noticing the header, which would report success
-for two of the three ways this breaks. Measured against builds with each piece
+for two of the four ways this breaks. `otelStarted` covers the fourth, which
+none of the other fields can see. Measured against builds with each piece
 removed:
 
-| | `joined` | `sawTraceparent` | `traceId` |
-|---|---|---|---|
-| All three call sites present | `true` | `true` | the caller's |
-| No `instrumentation-client.js` | `false` | `false` | a fresh one |
-| No `instrumentation.js` | `false` | `true` | **absent** |
-| Malformed `traceparent` | `false` | `true` | a fresh one |
+| | `joined` | `sawTraceparent` | `otelStarted` | `traceId` |
+|---|---|---|---|---|
+| All four conditions met | `true` | `true` | `true` | the caller's |
+| No `instrumentation-client.js` | `false` | `false` | `true` | a fresh one |
+| No `instrumentation.js` | `false` | `true` | `false` | **absent** |
+| Malformed `traceparent` | `false` | `true` | `true` | a fresh one |
+| No `serverExternalPackages` entry | **`true`** | `true` | **`false`** | the caller's |
+
+The last row is the one to know about. The trace joins perfectly and the flush
+is inert, so every field that describes *joining* reports success and only
+`otelStarted` dissents — which is why it is in the response at all. See
+[Flushing before the response](#flushing-before-the-response) for what that
+costs.
 
 The third row is why the comparison is worth the few lines: with server tracing
 missing, the span `withTrace` opens is non-recording and carries no ids at all,
 while the header still arrives. Anything asking only "did a `traceparent` turn
 up" calls that a success.
 
-The browser half is the button, which reports the same three states in words.
+The browser half is the button, which reports the joining states in words.
 
-Three call sites have to be present, and any one of them going missing leaves a
-green build and a silently split trace:
+Four conditions have to hold, and any one of them going missing leaves a green
+build:
 
-| Where | What |
-|---|---|
-| [`instrumentation-client.js`](instrumentation-client.js) | `initBrowserOtel()` |
-| [`instrumentation.js`](instrumentation.js) | `initOtel()` |
-| [`app/api/checkout/route.js`](app/api/checkout/route.js) | `withTrace(fn, { carrier })` |
+| Where | What | Missing it costs |
+|---|---|---|
+| [`instrumentation-client.js`](instrumentation-client.js) | `initBrowserOtel()` | The trace, silently |
+| [`instrumentation.js`](instrumentation.js) | `initOtel()` | The trace, silently |
+| [`app/api/checkout/route.js`](app/api/checkout/route.js) | `withTrace(fn, { carrier })` | The trace, silently |
+| [`next.config.mjs`](next.config.mjs) | `serverExternalPackages` | Delivery of the server span |
 
 ### What the browser half costs
 

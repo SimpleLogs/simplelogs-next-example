@@ -4,6 +4,7 @@ import {
   flushServer,
   withTrace,
   currentTraceIds,
+  isOtelStarted,
 } from "@simplelogs/next/server";
 
 export async function POST() {
@@ -65,7 +66,19 @@ export async function POST() {
           // Reported back so the page can show what happened instead of
           // claiming it. Not secret: `traceId` is the value the browser itself
           // put in the `traceparent` header on this request.
-          return Response.json({ ok: true, joined, sawTraceparent, ...ids });
+          //
+          // `otelStarted` is the fourth condition, and the only one the other
+          // three fields cannot see. It is `false` when this handler is a
+          // different module instance from the one `instrumentation.js`
+          // started — traces still join, and the flush below silently does
+          // nothing. See `serverExternalPackages` in `next.config.mjs`.
+          return Response.json({
+            ok: true,
+            joined,
+            sawTraceparent,
+            otelStarted: isOtelStarted(),
+            ...ids,
+          });
         } finally {
           // In a `finally` so the timing still closes when the work above throws
           // — the failed request is the one you most want timed, and an unclosed
@@ -107,9 +120,14 @@ export async function POST() {
     // The other half of making the flush work at all is `serverExternalPackages`
     // in `next.config.mjs` — see the note there.
     //
-    // `flushServer()` does not reject — the SDK catches send failures inside
-    // the queue — so nothing here can replace the response built above, or
-    // mask an error on its way out.
+    // `flushServer()` does not reject, so nothing here can replace the
+    // response built above or mask an error on its way out. Worth being
+    // precise about that now it covers two things: the entries queue catches
+    // its own send failures, and `flushOtel()` wraps each provider's
+    // `forceFlush()` in its own `.catch(() => {})`. That second half matters
+    // because `BatchSpanProcessor.forceFlush()` DOES reject, on an export
+    // failure or an export timeout — without the SDK's catch, an unreachable
+    // collector would 500 a checkout that worked, from inside a `finally`.
     //
     // "Flushing before the response" in the README has what this does and does
     // not guarantee, and what it costs.
