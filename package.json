@@ -9,7 +9,7 @@
     "start": "next start -p 5175"
   },
   "dependencies": {
-    "@simplelogs/next": "^1.4.5",
+    "@simplelogs/next": "^2.0.0",
     "next": "^16.2.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
