@@ -48,17 +48,27 @@ export default function CheckoutButton() {
     // whole point of this example is a trace that spans both sides, and that
     // is exactly the thing an SDK upgrade can switch off without any error —
     // so a box that always reads "share one trace" would be the last place
-    // you would notice. `joined` comes from the handler checking for an
-    // inbound `traceparent`.
+    // you would notice.
+    //
+    // `joined` is the handler comparing the trace it ended up in against the
+    // one this request carried, not merely noticing a header. The two
+    // not-joined branches are split because they have different causes and
+    // send you to different files.
     if (!result) {
       setStatus("failed");
     } else if (result.joined) {
       setStatus(`checkout ok — client and server share trace ${result.traceId}`);
+    } else if (!result.sawTraceparent) {
+      setStatus(
+        `checkout ok — but no traceparent reached the server, so it opened its own trace (${result.traceId}).\n` +
+          "Nothing sent one: browser tracing is not running (instrumentation-client.js), " +
+          "or something between here and the handler stripped the header.",
+      );
     } else {
       setStatus(
-        `checkout ok — but the server opened its OWN trace (${result.traceId}).\n` +
-          "No traceparent reached it: browser tracing is not running. See " +
-          "instrumentation-client.js.",
+        `checkout ok — but the server did not continue this page's trace (it used ${result.traceId ?? "no trace at all"}).\n` +
+          "A traceparent arrived and was not joined: server tracing is not running " +
+          "(instrumentation.js), or the handler is not passing the headers to withTrace.",
       );
     }
   }

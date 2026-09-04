@@ -22,12 +22,18 @@ export async function POST() {
   // through the SDK's own correlation, which is why it is passed explicitly.
   const inbound = await headers();
 
-  // Whether the browser actually sent a trace to continue. `withTrace` opens a
-  // span either way, so the id below alone cannot tell the two apart — a trace
-  // this request started looks exactly like one it joined. Reading the header
-  // is what distinguishes them, and the button prints the difference rather
-  // than asserting the good case.
-  const joined = inbound.has("traceparent");
+  // The trace id the caller claims, if any. `traceparent` is
+  // `version-traceid-spanid-flags`, so field 1 is the trace.
+  //
+  // Kept separate from "did we join it", because those are different
+  // questions and only the second one is worth printing. A header can arrive
+  // and still not be continued — if `initOtel()` is missing the span opened
+  // below is non-recording and carries no ids at all, and if the header is
+  // malformed extraction fails and a fresh root opens instead. Both look
+  // exactly like success to anything that only asks whether the header was
+  // there.
+  const sawTraceparent = inbound.has("traceparent");
+  const inboundTraceId = inbound.get("traceparent")?.split("-")[1];
 
   return withTrace(
     async () => {
@@ -40,10 +46,19 @@ export async function POST() {
           message: "Checkout processed",
         });
 
-        // The ids are reported back so the page can show what happened
-        // instead of claiming it. They are not secret: `traceId` is the value
-        // the browser itself put in the `traceparent` header on this request.
-        return Response.json({ ok: true, joined, ...currentTraceIds() });
+        // Read inside the scope, where the span is active — outside it this
+        // is empty. Comparing it against what arrived is the only check that
+        // distinguishes a trace this request CONTINUED from one it merely
+        // opened, and it is false for every way the wiring can be wrong: a
+        // missing `initOtel()` leaves `traceId` undefined, a malformed header
+        // leaves a fresh id, and a broken `carrier` leaves the same.
+        const ids = currentTraceIds();
+        const joined = Boolean(inboundTraceId) && ids.traceId === inboundTraceId;
+
+        // Reported back so the page can show what happened instead of
+        // claiming it. Not secret: `traceId` is the value the browser itself
+        // put in the `traceparent` header on this request.
+        return Response.json({ ok: true, joined, sawTraceparent, ...ids });
       } finally {
         // In a `finally` so the timing still closes when the work above throws
         // — the failed request is the one you most want timed, and an unclosed

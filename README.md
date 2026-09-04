@@ -231,17 +231,32 @@ answers the question directly, so the check is one command:
 ```bash
 # No traceparent — the handler should open its own trace.
 curl -sX POST localhost:5175/api/checkout
-# {"ok":true,"joined":false,"traceId":"dba2429c…","spanId":"…"}
+# {"ok":true,"joined":false,"sawTraceparent":false,"traceId":"2a022d78…"}
 
 # With one — it should report that same trace back.
 curl -sX POST -H 'traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01' \
   localhost:5175/api/checkout
-# {"ok":true,"joined":true,"traceId":"4bf92f3577b34da6a3ce929d0e0e4736","spanId":"…"}
+# {"ok":true,"joined":true,"sawTraceparent":true,"traceId":"4bf92f3577b34da6a3ce929d0e0e4736"}
 ```
 
-`joined: true` with the caller's own trace id coming back is the server half.
-The browser half is the button: click it and the box names a trace, or says the
-server opened its own.
+`joined` is the handler comparing the trace it ended up in against the one the
+request carried — not merely noticing the header, which would report success
+for two of the three ways this breaks. Measured against builds with each piece
+removed:
+
+| | `joined` | `sawTraceparent` | `traceId` |
+|---|---|---|---|
+| All three call sites present | `true` | `true` | the caller's |
+| No `instrumentation-client.js` | `false` | `false` | a fresh one |
+| No `instrumentation.js` | `false` | `true` | **absent** |
+| Malformed `traceparent` | `false` | `true` | a fresh one |
+
+The third row is why the comparison is worth the few lines: with server tracing
+missing, the span `withTrace` opens is non-recording and carries no ids at all,
+while the header still arrives. Anything asking only "did a `traceparent` turn
+up" calls that a success.
+
+The browser half is the button, which reports the same three states in words.
 
 Three call sites have to be present, and any one of them going missing leaves a
 green build and a silently split trace:

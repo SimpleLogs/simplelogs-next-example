@@ -7,9 +7,13 @@
  * without it `withTrace()` still runs your function, but the span it opens is
  * non-recording and carries no ids, so the join silently produces nothing.
  *
- * The runtime check is not optional: the edge runtime has no
- * `AsyncLocalStorage` from `node:async_hooks`, so calling this there fails on
- * an import rather than degrading.
+ * The runtime check is not optional, though not for the reason usually given.
+ * The edge runtime does have `AsyncLocalStorage` — Next polyfills it there and
+ * lists it as such in its own edge API reference. What it does not have is
+ * native Node APIs, and `@simplelogs/next/server` reaches them: `initOtel()`
+ * pulls `@opentelemetry/sdk-trace-node`, the proto OTLP exporters over
+ * `node:http`, and `@opentelemetry/instrumentation`. So this fails on an
+ * import under edge rather than degrading.
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
