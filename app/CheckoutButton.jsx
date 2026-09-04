@@ -10,9 +10,12 @@ export default function CheckoutButton() {
   async function checkout() {
     logger.log({ touchpoint: "checkout/click", level: "info" });
 
-    // The SDK patches fetch to forward page, session and trace headers on
-    // same-origin requests, so the route handler's own logs join this page's
-    // trace without either side passing an id explicitly.
+    // The SDK patches fetch to put the page and session ids on same-origin
+    // requests, and — once `instrumentation-client.js` has started browser
+    // tracing — a W3C `traceparent` alongside them. So the route handler's own
+    // logs join this page's trace without either side passing an id
+    // explicitly. Without that file the ids still travel and the trace does
+    // not; see "Correlation across the client/server boundary" in the README.
     //
     // Guarded, and both failure branches log. A rejected fetch — server down,
     // offline — would otherwise leave the box reading "ready", making a failed

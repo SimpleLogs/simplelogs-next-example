@@ -8,6 +8,11 @@ environment variables. The provider covers the browser; the server SDK reads
 its key from the environment at request time, so route handlers need no setup
 of their own.
 
+Tracing is a further opt-in: two instrumentation files and one call in the
+route handler. All of it is optional — logging, timings, page views and Web
+Vitals work without any of it — and together it is what makes a click and the
+server work it caused one trace rather than two.
+
 ## Setup
 
 You need both keys — SimpleLogs dashboard → **Settings → API Keys**.
@@ -40,6 +45,19 @@ That hands the client config down through context, so `useSimpleLogs()` works
 anywhere below it. `serverLogger` in a route handler needs nothing further —
 the server SDK reads `SIMPLELOGS_SERVER_KEY` from the environment at request
 time.
+
+Tracing is a separate opt-in on each side, so a page that only wants logging
+never downloads the web tracer and a server that only wants logging never
+starts one:
+
+- [`instrumentation-client.js`](instrumentation-client.js) calls
+  `initBrowserOtel()` — the page-scoped root span, and with it the
+  `traceparent` on outgoing same-origin `fetch` calls.
+- [`instrumentation.js`](instrumentation.js) calls `initOtel()` — the tracer
+  and context manager the server needs to continue that trace.
+
+See [Correlation across the client/server boundary](#correlation-across-the-clientserver-boundary)
+for what each half is actually doing.
 
 ## Keys
 
@@ -119,19 +137,56 @@ expensive to diagnose.
 [`app/CheckoutButton.jsx`](app/CheckoutButton.jsx) calls
 [`app/api/checkout/route.js`](app/api/checkout/route.js). Neither passes an id.
 
-The SDK's patched `fetch` forwards page, session and trace headers on
-same-origin requests, and the route handler reads them back through
-`next/headers`. The result is one trace spanning the click and the server work
-it caused.
+Two levels of correlation are worth telling apart, because they arrive by
+different routes and one of them needs setup.
 
-That is the piece you would otherwise have to build yourself, and it is why
-`@simplelogs/next` exists as its own package rather than as two installs.
+**Page and session** ride the SDK's own headers. The patched `fetch` puts
+`x-simplelogs-page-id` and `x-simplelogs-session-id` on same-origin requests,
+and the route handler reads them back through `next/headers` — no argument
+threaded through your code, and nothing to turn on. That is the piece you would
+otherwise have to build yourself, and it is why `@simplelogs/next` exists as its
+own package rather than as two installs.
 
-Two levels of correlation are worth telling apart. A plain `serverLogger.log()`
-is attributed to the browser's **page and session**. A server **timing**
-(`start()` / `end()`) additionally joins the browser's **trace**, which is what
-puts the server work inside the page's tree rather than beside it — so the
-route handler here times itself as well as logging.
+**The trace** rides the W3C `traceparent` header, through OpenTelemetry's
+context rather than the SDK's correlation. That is what puts the server work
+*inside* the page's tree rather than beside it, and it takes both halves of the
+opt-in:
+
+1. `initBrowserOtel()` in [`instrumentation-client.js`](instrumentation-client.js)
+   opens the page-scoped root span. Without an active span there is nothing to
+   propagate, so the header is simply absent.
+2. `initOtel()` in [`instrumentation.js`](instrumentation.js) installs the
+   tracer and context manager on the server.
+3. `withTrace(fn, { carrier: await headers() })` in
+   [`app/api/checkout/route.js`](app/api/checkout/route.js) continues the
+   incoming trace. A request that arrives without a `traceparent` — from curl,
+   or from a browser that never opted in — opens its own trace instead.
+
+Miss any of the three and the two sides still log, still time, and still share
+a page and a session; only the trace splits in two. Nothing warns about it,
+because a page that never opted in is not misconfigured — so if a waterfall
+looks halved, check these three first.
+
+The automatic alternative to step 3 is `@opentelemetry/instrumentation-http`,
+which patches `node:http` at require time and continues the trace for every
+handler without being asked. It earns its dependency once you have many
+handlers; with one, an explicit `withTrace` is smaller and easier to read.
+
+### What the browser half costs
+
+`instrumentation-client.js` imports the web tracer statically and runs before
+hydration, so unlike the replay chunk below it is part of first load rather
+than something fetched later. First Load JS for `/`, measured in this example's
+own production build against the same build with that one file removed:
+
+| | Uncompressed | gzipped |
+|---|---|---|
+| Logging only | 545,621 B | 163,546 B |
+| Logging + browser tracing | 605,066 B | 179,890 B |
+
+So about 16 KB gzipped for the page-scoped root span and the `traceparent` that
+comes with it. Delete the file and both numbers drop back — nothing else in the
+integration depends on it.
 
 ## Logging
 
