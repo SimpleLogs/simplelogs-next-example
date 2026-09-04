@@ -116,8 +116,15 @@ your deployment:
 | Build time only | your collector | **go to the SDK default** |
 | Both | your collector | your collector |
 
-Measured with one page load and one checkout against a local collector: 0 / 2,
-then 6 / 0.
+Measured with one page load and one checkout against a local collector, counting
+**entries only**: 0 / 2, then 6 / 0. With browser tracing on, the same workload
+also emits the two OTLP requests shown further down, so those figures are a
+scope rather than a column total.
+
+Setting `SIMPLELOGS_API_ENDPOINT` in only one environment therefore leaves half
+of every trace missing, which reads as a correlation bug rather than a
+configuration one — and that is what makes either direction expensive to
+diagnose.
 
 Four emitters follow those two columns, by three different mechanisms:
 
@@ -167,10 +174,6 @@ Two things are easy to get wrong about it, both measured here with it set to
 
 Leaving it unset — as this example does — is what keeps the two columns above
 sufficient.
-
-Either direction leaves half of every trace missing, which reads as a
-correlation bug rather than a configuration one — and that is what makes it
-expensive to diagnose.
 
 ## What you get without writing any logging code
 
@@ -326,6 +329,14 @@ milliseconds later, when the batch timer fires. A long-lived server survives
 that gap, which is exactly why the omission is invisible in `next dev`. **A
 serverless function frozen the moment it responds does not**, and the batch is
 dropped with no error anywhere.
+
+The server's **span** is batched too — `initOtel()` installs a
+`BatchSpanProcessor`, so the trace this example exists to demonstrate has the
+same loss mode as the entries. The same one line covers it:
+`flushServer()` is `Promise.all([serverQueue.flush(), flushOtel()])`, and
+`flushOtel()` force-flushes the tracer, logger and meter providers. Nothing
+extra to call — but worth knowing that removing that line would cost the trace
+as well as the logs.
 
 Measured on `next build && next start` against a local collector: with the
 flush, both entries are delivered by the time the response returns; without it,

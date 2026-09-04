@@ -71,11 +71,16 @@ export async function POST() {
         await serverLogger.end({ key });
 
         // Entries are batched, and a serverless function can be frozen the
-        // moment it responds. Neither this nor the end() above rejects — the
-        // SDK catches send failures inside the queue — so nothing in this
-        // `finally` can replace the response built in the `try`. (That is a
-        // statement about these two calls only; start() and log() are ordinary
-        // awaits.)
+        // moment it responds. So is the SPAN this handler opened —
+        // `initOtel()` installs a `BatchSpanProcessor`, giving the trace the
+        // same loss mode as the entries. One call covers both: `flushServer()`
+        // is `Promise.all([serverQueue.flush(), flushOtel()])`, and
+        // `flushOtel()` force-flushes the tracer, logger and meter providers.
+        //
+        // Neither this nor the end() above rejects — the SDK catches send
+        // failures inside the queue — so nothing in this `finally` can replace
+        // the response built in the `try`. (That is a statement about these
+        // two calls only; start() and log() are ordinary awaits.)
         //
         // "Flushing before the response" in the README has what this does and
         // does not guarantee, and what it costs.
