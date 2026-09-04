@@ -29,11 +29,12 @@ export async function POST() {
   //
   // Kept separate from "did we join it", because those are different
   // questions and only the second one is worth printing. A header can arrive
-  // and still not be continued — if `initOtel()` is missing the span opened
-  // below is non-recording and carries no ids at all, and if the header is
-  // malformed extraction fails and a fresh root opens instead. Both look
-  // exactly like success to anything that only asks whether the header was
-  // there.
+  // and still not be continued — if `initOtel()` is missing, nothing installs
+  // a context manager, so the span opened below is never active and no id can
+  // be read back off it (the span itself does carry the caller's ids; it is
+  // simply unreachable), and if the header is malformed extraction fails and a
+  // fresh root opens instead. Both look exactly like success to anything that
+  // only asks whether the header was there.
   const sawTraceparent = inbound.has("traceparent");
   const inboundTraceId = inbound.get("traceparent")?.split("-")[1];
 

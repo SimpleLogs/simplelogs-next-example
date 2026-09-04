@@ -84,19 +84,40 @@ export default function CheckoutButton() {
       // server reporting the decision it ended up with, and a server-side
       // sampler can drop a trace the caller marked keep; naming the caller
       // here would be right in the common case and wrong in that one.
+      //
+      // The consequence is scoped to the SERVER's span for the same reason.
+      // Under a server-side sampler the browser's root span for this trace id
+      // was exported normally and only the handler's half is missing — so
+      // "nothing to find at the collector" would send someone away from
+      // exactly the half-a-trace that is hardest to diagnose.
+      //
+      // `otelStarted` prints whether or not the span is being kept. It is not
+      // a per-request outcome: it is the missing `serverExternalPackages`
+      // entry, a standing fault on every request. Suppressing it on unsampled
+      // requests would mean that under a ratio sampler the sampling decision,
+      // not the fault, decided whether the box mentioned it — hiding it on
+      // most clicks. What it must not do is promise the batch timer, which is
+      // true only of a span that reached the buffer.
       setStatus(
         `checkout ok — client and server share trace ${result.traceId}` +
           (result.sampled
             ? ""
             : "\nBut this trace is not being kept: a sampling decision — the caller's " +
-              "traceparent flags, or a sampler on the server — left the span unexported. " +
-              "Nothing is wrong; there is just nothing to find at the collector.") +
-          (result.otelStarted || !result.sampled
+              "traceparent flags, or a sampler on the server — left the server's span " +
+              "unexported. That is a choice rather than a fault: the span will not be " +
+              "under this id at the collector, though anything the browser exported " +
+              "for it still is.") +
+          (result.otelStarted
             ? ""
-            : "\nBut the server cannot flush that trace before it responds: tracing " +
-              "is not started in this handler's module instance, so the span goes out " +
-              "on the batch timer, or not at all on a host that freezes. See " +
-              "serverExternalPackages in next.config.mjs."),
+            : result.sampled
+              ? "\nBut the server cannot flush that trace before it responds: tracing " +
+                "is not started in this handler's module instance, so the span goes out " +
+                "on the batch timer, or not at all on a host that freezes. See " +
+                "serverExternalPackages in next.config.mjs."
+              : "\nSeparately, server tracing is not started in this handler's module " +
+                "instance, so the flush before the response does nothing for any " +
+                "request — including the ones that are being kept. See " +
+                "serverExternalPackages in next.config.mjs."),
       );
       return;
     }
@@ -150,11 +171,19 @@ export default function CheckoutButton() {
           undeliverable,
       );
     } else {
+      // Narrowed the same way the sibling branch above narrows, and on the
+      // same signal: only a missing `initOtel()` leaves NO id — a malformed
+      // header and a broken `carrier` both leave a fresh one. So an absent
+      // `traceId` identifies the first cause outright and rules the other two
+      // out, and listing all three would be broader than the evidence.
       setStatus(
         `checkout ok — but the server did not continue this page's trace; it recorded ${recorded}.\n` +
-          "A traceparent arrived and was not joined. Either server tracing is " +
-          "not running (instrumentation.js), the traceparent that arrived was " +
-          "malformed, or the handler is not passing the headers to withTrace." +
+          (result.traceId
+            ? "A traceparent arrived and was not joined. Either the traceparent " +
+              "that arrived was malformed, or the handler is not passing the " +
+              "headers to withTrace."
+            : "A traceparent arrived and the server recorded nothing at all, so " +
+              "server tracing is not running (instrumentation.js).") +
           notKept +
           undeliverable,
       );

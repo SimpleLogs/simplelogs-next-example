@@ -347,9 +347,11 @@ looks like: that derivation was `joined ? parentSampled : true`, and `joined`
 is `false` here, so it fell to the root default of `true` while nothing was
 exported at all. The header and its flags byte were sitting there unread.
 
-The browser half is the button, which reports all of these in words — including
-the last row, since a shared trace that cannot be delivered is not a success
-worth printing unqualified.
+The browser half is the button, which reports all of these in words —
+including the last two rows, since a shared trace that is not going to reach
+the collector, whether by fault or by decision, is not a success worth printing
+unqualified. The button keeps those two apart: it prints the sampling sentence
+and the flush sentence separately, and only the second describes a fault.
 
 Four conditions have to hold, and any one of them going missing leaves a green
 build:
