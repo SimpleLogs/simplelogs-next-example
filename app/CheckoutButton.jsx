@@ -23,6 +23,14 @@ export default function CheckoutButton() {
     // rejection to fix the box would remove the unhandled rejection the SDK
     // had been capturing for free. A visible "failed" with no entry behind it
     // is the worst outcome for an example about logging.
+    // Covers the request window, which is not short: the handler flushes its
+    // telemetry before responding, and that flush waits on the export — 8.2s
+    // against a collector that is not answering, per "What it costs" in the
+    // README. Without this the box reads "ready" throughout, which is what it
+    // says before anyone clicks at all, so a slow checkout is indistinguishable
+    // from an ignored one. (It fooled me while verifying this branch.)
+    setStatus("checking…");
+
     let result = null;
     try {
       const res = await fetch("/api/checkout", { method: "POST" });

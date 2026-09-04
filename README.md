@@ -55,6 +55,9 @@ starts one:
   `traceparent` on outgoing same-origin `fetch` calls.
 - [`instrumentation.js`](instrumentation.js) calls `initOtel()` — the tracer
   and context manager the server needs to continue that trace.
+- [`app/api/checkout/route.js`](app/api/checkout/route.js) wraps the handler in
+  `withTrace(fn, { carrier: await headers() })` — what continues the incoming
+  trace rather than opening a new one.
 - [`next.config.mjs`](next.config.mjs) lists `@simplelogs/node` in
   `serverExternalPackages`. Without it `initOtel()` and `flushServer()` land in
   separate module instances, and the flush before the response is silently
