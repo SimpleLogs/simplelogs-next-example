@@ -17,12 +17,6 @@ export default function CheckoutButton() {
     // explicitly. Without that file the ids still travel and the trace does
     // not; see "Correlation across the client/server boundary" in the README.
     //
-    // Guarded, and both failure branches log. A rejected fetch — server down,
-    // offline — would otherwise leave the box reading "ready", making a failed
-    // checkout look identical to never having clicked; and catching that
-    // rejection to fix the box would remove the unhandled rejection the SDK
-    // had been capturing for free. A visible "failed" with no entry behind it
-    // is the worst outcome for an example about logging.
     // Covers the request window, which is not short: the handler flushes its
     // telemetry before responding, and that flush waits on the export — 8.2s
     // against a collector that is not answering, per "What it costs" in the
@@ -31,6 +25,13 @@ export default function CheckoutButton() {
     // from an ignored one. (It fooled me while verifying this branch.)
     setStatus("checking…");
 
+    // Guarded, and both failure branches log. A rejected fetch — server down,
+    // offline — would otherwise strand the box on "checking…" above, making a
+    // failed checkout look like one still in flight, which the 8.2s window
+    // makes entirely plausible; and catching that rejection to fix the box
+    // would remove the unhandled rejection the SDK had been capturing for
+    // free. A visible "failed" with no entry behind it is the worst outcome
+    // for an example about logging.
     let result = null;
     try {
       const res = await fetch("/api/checkout", { method: "POST" });

@@ -9,7 +9,8 @@ its key from the environment at request time, so route handlers need no setup
 of their own.
 
 Tracing is a further opt-in: two instrumentation files, one call in the route
-handler and one line of build config. All of it is optional — logging, timings,
+handler, and one line of build config with the dependency that makes it
+resolve. All of it is optional — logging, timings,
 page views and Web Vitals work without any of it — and together it is what makes
 a click and the server work it caused one trace rather than two.
 
@@ -59,10 +60,14 @@ starts one:
   `withTrace(fn, { carrier: await headers() })` — what continues the incoming
   trace rather than opening a new one.
 - [`next.config.mjs`](next.config.mjs) lists `@simplelogs/node` in
-  `serverExternalPackages`. Without it `initOtel()` and `flushServer()` land in
-  separate module instances, and the flush before the response is silently
-  inert — the trace still joins, and the server's own span is lost on a host
-  that freezes at the response.
+  `serverExternalPackages`, and [`package.json`](package.json) declares that
+  package alongside `@simplelogs/next`. Without the config entry `initOtel()`
+  and `flushServer()` land in separate module instances, and the flush before
+  the response is silently inert — the trace still joins, and the server's own
+  span is lost on a host that freezes at the response. The declaration is what
+  makes the entry resolve: externalising turns the import into a runtime
+  `require`, and an undeclared transitive is only findable under a hoisted
+  `node_modules` layout.
 
 The first three are what make the trace *join*; the fourth is what gets it
 *delivered*. See
@@ -295,7 +300,7 @@ build:
 | [`instrumentation-client.js`](instrumentation-client.js) | `initBrowserOtel()` | The trace, silently |
 | [`instrumentation.js`](instrumentation.js) | `initOtel()` | The trace, silently |
 | [`app/api/checkout/route.js`](app/api/checkout/route.js) | `withTrace(fn, { carrier })` | The trace, silently |
-| [`next.config.mjs`](next.config.mjs) | `serverExternalPackages` | Delivery of the server span |
+| [`next.config.mjs`](next.config.mjs) + [`package.json`](package.json) | `serverExternalPackages`, and `@simplelogs/node` declared so it resolves | Delivery of the server span |
 
 ### What the browser half costs
 
@@ -537,8 +542,11 @@ download, not the build output.
 ## Using the split packages directly
 
 `@simplelogs/next` re-exports `@simplelogs/browser`, `@simplelogs/node` and
-`@simplelogs/react` at the paths it has always published, so nothing here has
-to change. If you would rather depend on them directly, `@simplelogs/react`'s
+`@simplelogs/react` at the paths it has always published, so no *import* here
+has to change — every one of them goes through `@simplelogs/next`. (This
+example does declare `@simplelogs/node` in `package.json`, but for resolution
+rather than for an import: see
+[Checking it still works](#checking-it-still-works).) If you would rather depend on them directly, `@simplelogs/react`'s
 provider is the same component this example imports.
 
 ## Other examples
