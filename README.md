@@ -119,6 +119,23 @@ behind goes to the SDK's default — outside your deployment:
 Measured with one page load and one checkout against a local collector: 0 / 2,
 then 6 / 0.
 
+Browser **traces** follow the browser column, not a setting of their own.
+`initBrowserOtel()` takes no endpoint here and needs none: its exporters
+resolve the URL from the config in force at send time, which is the same value
+the provider forwarded. With `SIMPLELOGS_API_ENDPOINT` pointed at
+`http://127.0.0.1:9999/api/v1`, one page load and one checkout put both browser
+signals on that host and nothing anywhere else:
+
+```
+1x  http://127.0.0.1:9999/api/otlp/v1/traces
+1x  http://127.0.0.1:9999/api/otlp/v1/logs
+2x  http://127.0.0.1:9999/api/v1/replay/settings
+```
+
+(`SIMPLELOGS_OTLP_BROWSER_ENDPOINT` exists if you want browser telemetry at a
+different collector from browser entries. Leaving it unset — as here — is what
+keeps the two columns above sufficient.)
+
 Either direction leaves half of every trace missing, which reads as a
 correlation bug rather than a configuration one — and that is what makes it
 expensive to diagnose.
@@ -278,7 +295,7 @@ switch under Settings → Session Replay.
 While a recording is running, the SDK also captures the page's `console.*`
 calls into it, and they are shipped and indexed with the recording.
 
-Read out of `@simplelogs/browser@1.6.0` and `@simplelogs/react@1.4.5`, since
+Read out of `@simplelogs/browser@2.0.0` and `@simplelogs/react@2.0.0`, since
 none of this is visible from the call site:
 
 - The console methods are wrapped when the replay module loads, not when a
@@ -321,7 +338,7 @@ config={{ clientKey, sessionReplay: { enabled: false } }}
 
 `enabled` is read at runtime, so no bundler can eliminate rrweb on it — the SDK
 imports it dynamically, and in this example's production build it lands in its
-own ~204KB chunk that is simply never fetched. What the flag saves is the
+own chunk of 213,633 B that is simply never fetched. What the flag saves is the
 download, not the build output.
 
 ## Using the split packages directly
