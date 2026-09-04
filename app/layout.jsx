@@ -31,6 +31,10 @@ export const metadata = { title: "SimpleLogs — Next.js example" };
  * than at build — Docker, Kubernetes — no NEXT_PUBLIC_ variable can see it,
  * and you would instead read an unprefixed variable from a layout forced
  * dynamic.
+ *
+ * Tracing is not set up here. It is a separate entry point on both sides, so
+ * it lives in `instrumentation-client.js` and `instrumentation.js` — see
+ * "Correlation across the client/server boundary" in the README.
  */
 export default function RootLayout({ children }) {
   return (
