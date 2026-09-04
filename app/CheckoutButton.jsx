@@ -23,12 +23,13 @@ export default function CheckoutButton() {
     // rejection to fix the box would remove the unhandled rejection the SDK
     // had been capturing for free. A visible "failed" with no entry behind it
     // is the worst outcome for an example about logging.
-    let ok = false;
+    let result = null;
     try {
       const res = await fetch("/api/checkout", { method: "POST" });
-      ok = res.ok;
 
-      if (!ok) {
+      if (res.ok) {
+        result = await res.json();
+      } else {
         logger.log({
           touchpoint: "checkout/click",
           level: "error",
@@ -43,7 +44,23 @@ export default function CheckoutButton() {
       });
     }
 
-    setStatus(ok ? "checkout ok — client and server share one trace" : "failed");
+    // Reports what the handler saw rather than asserting the good case. The
+    // whole point of this example is a trace that spans both sides, and that
+    // is exactly the thing an SDK upgrade can switch off without any error —
+    // so a box that always reads "share one trace" would be the last place
+    // you would notice. `joined` comes from the handler checking for an
+    // inbound `traceparent`.
+    if (!result) {
+      setStatus("failed");
+    } else if (result.joined) {
+      setStatus(`checkout ok — client and server share trace ${result.traceId}`);
+    } else {
+      setStatus(
+        `checkout ok — but the server opened its OWN trace (${result.traceId}).\n` +
+          "No traceparent reached it: browser tracing is not running. See " +
+          "instrumentation-client.js.",
+      );
+    }
   }
 
   return (
@@ -51,7 +68,7 @@ export default function CheckoutButton() {
       <button onClick={checkout} style={{ font: "inherit", padding: "0.5rem 1rem", cursor: "pointer" }}>
         Run checkout
       </button>
-      <pre style={{ background: "#f4f4f5", padding: "1rem", borderRadius: 6, overflowX: "auto" }}>{status}</pre>
+      <pre style={{ background: "#f4f4f5", padding: "1rem", borderRadius: 6, overflowX: "auto", whiteSpace: "pre-wrap" }}>{status}</pre>
     </>
   );
 }

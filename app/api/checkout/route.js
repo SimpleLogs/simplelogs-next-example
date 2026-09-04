@@ -1,5 +1,10 @@
 import { headers } from "next/headers";
-import { serverLogger, flushServer, withTrace } from "@simplelogs/next/server";
+import {
+  serverLogger,
+  flushServer,
+  withTrace,
+  currentTraceIds,
+} from "@simplelogs/next/server";
 
 export async function POST() {
   // A unique key, not a timestamp. start() and end() are matched on `key` in a
@@ -15,6 +20,15 @@ export async function POST() {
   // request scope, so `serverLogger` picks those up by itself. The trace is
   // the one piece that travels through OpenTelemetry's context rather than
   // through the SDK's own correlation, which is why it is passed explicitly.
+  const inbound = await headers();
+
+  // Whether the browser actually sent a trace to continue. `withTrace` opens a
+  // span either way, so the id below alone cannot tell the two apart — a trace
+  // this request started looks exactly like one it joined. Reading the header
+  // is what distinguishes them, and the button prints the difference rather
+  // than asserting the good case.
+  const joined = inbound.has("traceparent");
+
   return withTrace(
     async () => {
       await serverLogger.start({ key, touchpoint: "checkout/submit" });
@@ -26,7 +40,10 @@ export async function POST() {
           message: "Checkout processed",
         });
 
-        return Response.json({ ok: true });
+        // The ids are reported back so the page can show what happened
+        // instead of claiming it. They are not secret: `traceId` is the value
+        // the browser itself put in the `traceparent` header on this request.
+        return Response.json({ ok: true, joined, ...currentTraceIds() });
       } finally {
         // In a `finally` so the timing still closes when the work above throws
         // — the failed request is the one you most want timed, and an unclosed
@@ -45,6 +62,6 @@ export async function POST() {
         await flushServer();
       }
     },
-    { name: "checkout/submit", carrier: await headers() },
+    { name: "checkout/submit", carrier: inbound },
   );
 }

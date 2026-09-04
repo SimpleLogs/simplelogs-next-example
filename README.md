@@ -106,11 +106,11 @@ has the same build-time trap as the client key and no prefix to signal it.
 
 The provider reads it during the layout's render and forwards it to the
 browser, and that render is prerendered, so the browser's copy is fixed at
-build. The server reads it from the environment per request. Setting only one
-therefore splits the data rather than failing, and whichever half is left
-behind goes to the SDK's default — outside your deployment:
+build. Setting only one environment therefore splits the data rather than
+failing, and whichever half is left behind goes to the SDK's default — outside
+your deployment:
 
-| Set | Browser entries | Server entries |
+| Set | Browser | Server |
 |---|---|---|
 | Run time only | **go to the SDK default** | your collector |
 | Build time only | your collector | **go to the SDK default** |
@@ -119,12 +119,24 @@ behind goes to the SDK's default — outside your deployment:
 Measured with one page load and one checkout against a local collector: 0 / 2,
 then 6 / 0.
 
-Browser **traces** follow the browser column, not a setting of their own.
-`initBrowserOtel()` takes no endpoint here and needs none: its exporters
-resolve the URL from the config in force at send time, which is the same value
-the provider forwarded. With `SIMPLELOGS_API_ENDPOINT` pointed at
-`http://127.0.0.1:9999/api/v1`, one page load and one checkout put both browser
-signals on that host and nothing anywhere else:
+Four emitters follow those two columns, by three different mechanisms:
+
+| What | Column | Resolved |
+|---|---|---|
+| Browser entries (`/enqueue`, replay settings) | Browser | Per send, from the forwarded config |
+| Browser traces and logs (OTLP) | Browser | Per send, from the forwarded config |
+| Server entries (`serverLogger`) | Server | Per request, from the environment |
+| Server traces and logs (OTLP) | Server | **Once, at server start** |
+
+The last row is the one that differs. `initOtel()` runs inside `register()` and
+resolves its exporter URL from the config as it stands then — so unlike
+`serverLogger`, a value that only arrives after boot never reaches it. For an
+ordinary deployment the answer is the same either way; it matters if you inject
+environment at runtime.
+
+Browser tracing needs no endpoint of its own. With `SIMPLELOGS_API_ENDPOINT`
+pointed at `http://127.0.0.1:9999/api/v1`, one page load and one checkout put
+every browser signal on that host and nothing anywhere else:
 
 ```
 1x  http://127.0.0.1:9999/api/otlp/v1/traces
@@ -132,9 +144,29 @@ signals on that host and nothing anywhere else:
 2x  http://127.0.0.1:9999/api/v1/replay/settings
 ```
 
-(`SIMPLELOGS_OTLP_BROWSER_ENDPOINT` exists if you want browser telemetry at a
-different collector from browser entries. Leaving it unset — as here — is what
-keeps the two columns above sufficient.)
+**`SIMPLELOGS_OTLP_BROWSER_ENDPOINT`** moves the browser's OTLP signals — its
+traces and logs — to a different host from its entries, for a deployment whose
+collector is not its SimpleLogs install. It is forwarded to the browser by the
+same prerendered render as `SIMPLELOGS_API_ENDPOINT`, so **it carries the same
+build-time trap and must be set in both environments too.**
+
+Two things are easy to get wrong about it, both measured here with it set to
+`http://127.0.0.1:8888` and `SIMPLELOGS_API_ENDPOINT` still on `:9999`:
+
+```
+1x  http://127.0.0.1:8888/v1/traces
+1x  http://127.0.0.1:8888/v1/logs
+2x  http://127.0.0.1:9999/api/v1/replay/settings
+```
+
+- The override is used **verbatim** — `<endpoint>/v1/traces`, with no
+  `/api/otlp` prefix. That prefix only appears on the URL derived from
+  `SIMPLELOGS_API_ENDPOINT`.
+- It takes **both** OTLP signals with it, not only traces, while entries and
+  replay settings stay on the browser column.
+
+Leaving it unset — as this example does — is what keeps the two columns above
+sufficient.
 
 Either direction leaves half of every trace missing, which reads as a
 correlation bug rather than a configuration one — and that is what makes it
@@ -188,6 +220,37 @@ The automatic alternative to step 3 is `@opentelemetry/instrumentation-http`,
 which patches `node:http` at require time and continues the trace for every
 handler without being asked. It earns its dependency once you have many
 handlers; with one, an explicit `withTrace` is smaller and easier to read.
+
+### Checking it still works
+
+An SDK upgrade can switch this off without an error, a warning or a failing
+build — that is exactly what happened on the way to 2.0.0, and it is why the
+status box reports the trace id rather than asserting a join. The handler
+answers the question directly, so the check is one command:
+
+```bash
+# No traceparent — the handler should open its own trace.
+curl -sX POST localhost:5175/api/checkout
+# {"ok":true,"joined":false,"traceId":"dba2429c…","spanId":"…"}
+
+# With one — it should report that same trace back.
+curl -sX POST -H 'traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01' \
+  localhost:5175/api/checkout
+# {"ok":true,"joined":true,"traceId":"4bf92f3577b34da6a3ce929d0e0e4736","spanId":"…"}
+```
+
+`joined: true` with the caller's own trace id coming back is the server half.
+The browser half is the button: click it and the box names a trace, or says the
+server opened its own.
+
+Three call sites have to be present, and any one of them going missing leaves a
+green build and a silently split trace:
+
+| Where | What |
+|---|---|
+| [`instrumentation-client.js`](instrumentation-client.js) | `initBrowserOtel()` |
+| [`instrumentation.js`](instrumentation.js) | `initOtel()` |
+| [`app/api/checkout/route.js`](app/api/checkout/route.js) | `withTrace(fn, { carrier })` |
 
 ### What the browser half costs
 
