@@ -336,17 +336,19 @@ same loss mode as the entries. `flushServer()` covers it, being
 `Promise.all([serverQueue.flush(), flushOtel()])`. But two things have to be
 true for that to reach this handler's own span, and neither is obvious:
 
-**The flush runs outside `withTrace`, not inside it.** A span reaches the batch
+**The flush runs outside `withTrace`, in a `finally`.** A span reaches the batch
 processor when it ends, and `withTrace` ends its span *after* the callback
 settles — that is what makes it time the callback. A flush within the callback
 therefore runs while this request's span is still open and sweeps up everything
-except it. Measured against a local collector, naming the span uniquely so the
-export carrying it could be identified:
+except it. The `finally` is what keeps the failed request covered, since
+`withTrace` re-throws after ending its span. Measured against a local collector,
+naming the span uniquely so the export carrying it could be identified:
 
 | Flush placement | The handler's span is exported |
 |---|---|
 | Inside the `withTrace` callback | **5.0s after the response**, on the batch timer |
 | After `withTrace` returns | 39ms **before** the response |
+| Same, on a handler that throws | 35ms **before** the 500 |
 
 **`@simplelogs/node` is in `serverExternalPackages`.** Bundled, `instrumentation.js`
 and the route handler get separate copies of the module holding the providers,

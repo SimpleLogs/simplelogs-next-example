@@ -26,5 +26,10 @@ export async function register() {
   // `node:http` at require time through `require-in-the-middle` — worth the
   // extra dependency and the bundler exclusions it then needs when you have
   // many handlers, and not worth either when you have one.
+  //
+  // Those exclusions are a separate matter from the `serverExternalPackages`
+  // entry already in `next.config.mjs`, which this app needs regardless: that
+  // one is about `initOtel()` and `flushServer()` sharing a single module
+  // instance, not about anything patching requires.
   initOtel({ instrumentations: [] });
 }
