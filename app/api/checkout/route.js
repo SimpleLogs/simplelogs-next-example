@@ -54,9 +54,12 @@ export async function POST() {
           // Read inside the scope, where the span is active — outside it this
           // is empty. Comparing it against what arrived is the only check that
           // distinguishes a trace this request CONTINUED from one it merely
-          // opened, and it is false for every way the wiring can be wrong: a
+          // opened, and it is false for every way the trace can fail to JOIN: a
           // missing `initOtel()` leaves `traceId` undefined, a malformed header
-          // leaves a fresh id, and a broken `carrier` leaves the same.
+          // leaves a fresh id, and a broken `carrier` leaves the same. Delivery
+          // is a separate question this cannot see — the `serverExternalPackages`
+          // entry going missing leaves `joined` TRUE, which is exactly what
+          // `otelStarted` below exists to answer.
           // `?? {}` is belt-and-braces: 2.0.0's `currentTraceIds()` already
           // returns `{}` when nothing is active. The line this replaced spread
           // the call directly, which tolerated `undefined`; a property read does
@@ -87,9 +90,11 @@ export async function POST() {
           // decision hands back a non-recording span. The two come apart on a
           // RECORD-without-SAMPLED decision, which keeps a live span the
           // exporter still drops. Nothing reachable here produces that —
-          // `OTEL_TRACES_SAMPLER` can only build AlwaysOn, AlwaysOff or
-          // TraceIdRatioBased, and none of them returns RECORD — so this is
-          // the read meaning what the field's name says, not a bug fixed.
+          // `OTEL_TRACES_SAMPLER` builds only AlwaysOn, AlwaysOff or
+          // TraceIdRatioBased, alone or wrapped in `ParentBased` (which is
+          // also the default, and delegates to those same three), and none of
+          // them returns RECORD — so this is the read meaning what the field's
+          // name says, not a bug fixed.
           //
           // With no tracer started there is no active span to read, so the
           // `?? 0` answers instead: not observed, reported as not kept. That
