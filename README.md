@@ -245,7 +245,13 @@ handlers; with one, an explicit `withTrace` is smaller and easier to read.
 An SDK upgrade can switch this off without an error, a warning or a failing
 build — that is exactly what happened on the way to 2.0.0, and it is why the
 status box reports the trace id rather than asserting a join. The handler
-answers the question directly, so the check is one command:
+answers the question directly, so the check is one command.
+
+Those diagnostic fields are a demo affordance, not part of the pattern: if you
+copy this route, keep `withTrace`, the flush and the `finally` blocks, and drop
+everything below `ok`. `otelStarted` reports server build state and `sampled`
+the sampler posture — neither came from the request, and a real checkout has no
+reason to hand them to an unauthenticated caller.
 
 ```bash
 # No traceparent — the handler should open its own trace.

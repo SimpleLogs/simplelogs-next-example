@@ -5,9 +5,29 @@ import { useSimpleLogs } from "@simplelogs/next";
 
 export default function CheckoutButton() {
   const [status, setStatus] = useState("ready");
+  // The window this guards is the one the comment below measures: up to 8.2s
+  // against a collector that is not answering. Nothing else stops a second
+  // click inside it, and two in flight means the SLOWER answer lands last —
+  // so the box would show a verdict about the click before last, on the one
+  // branch whose whole job is to say what just happened. Server-side the two
+  // never cross (`key` is a fresh UUID per request), so this is display only.
+  //
+  // Disabling rather than sequencing: an example is clearer when the state it
+  // can be in is one the reader can see on the button.
+  const [busy, setBusy] = useState(false);
   const logger = useSimpleLogs();
 
   async function checkout() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await runCheckout();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runCheckout() {
     logger.log({ touchpoint: "checkout/click", level: "info" });
 
     // Covers the request window, which is not short: the handler flushes its
@@ -202,7 +222,15 @@ export default function CheckoutButton() {
 
   return (
     <>
-      <button onClick={checkout} style={{ font: "inherit", padding: "0.5rem 1rem", cursor: "pointer" }}>
+      <button
+        onClick={checkout}
+        disabled={busy}
+        style={{
+          font: "inherit",
+          padding: "0.5rem 1rem",
+          cursor: busy ? "progress" : "pointer",
+        }}
+      >
         Run checkout
       </button>
       <pre style={{ background: "#f4f4f5", padding: "1rem", borderRadius: 6, overflowX: "auto", whiteSpace: "pre-wrap" }}>{status}</pre>

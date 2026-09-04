@@ -128,6 +128,18 @@ export async function POST() {
           // different module instance from the one `instrumentation.js`
           // started — traces still join, and the flush below silently does
           // nothing. See `serverExternalPackages` in `next.config.mjs`.
+          // COPYING THIS ROUTE: take `withTrace`, the flush and the `finally`
+          // blocks, and drop everything below `ok`. Those fields exist so this
+          // example can be checked from outside, and a real checkout has no
+          // reason to answer an unauthenticated caller with them. `traceId` is
+          // the caller's own (see above), but `otelStarted` is server build
+          // state — whether the `serverExternalPackages` entry is in place —
+          // and `sampled` is the sampler posture. Neither came from the
+          // request, and neither is the caller's business.
+          //
+          // Not gated on `NODE_ENV` on purpose: the check in the README runs
+          // against `next build && next start`, so a production gate would
+          // switch off the thing being demonstrated.
           return Response.json({
             ok: true,
             joined,
