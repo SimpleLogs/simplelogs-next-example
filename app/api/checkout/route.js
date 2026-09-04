@@ -52,7 +52,12 @@ export async function POST() {
         // opened, and it is false for every way the wiring can be wrong: a
         // missing `initOtel()` leaves `traceId` undefined, a malformed header
         // leaves a fresh id, and a broken `carrier` leaves the same.
-        const ids = currentTraceIds();
+        // `?? {}` is belt-and-braces: 2.0.0's `currentTraceIds()` already
+        // returns `{}` when nothing is active. The line this replaced spread
+        // the call directly, which tolerated `undefined`; a property read does
+        // not, and a 500 here would replace the diagnosis with a bare
+        // "failed" — the one outcome this code exists to prevent.
+        const ids = currentTraceIds() ?? {};
         const joined = Boolean(inboundTraceId) && ids.traceId === inboundTraceId;
 
         // Reported back so the page can show what happened instead of

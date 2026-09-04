@@ -56,19 +56,39 @@ export default function CheckoutButton() {
     // send you to different files.
     if (!result) {
       setStatus("failed");
-    } else if (result.joined) {
+      return;
+    }
+
+    if (result.joined) {
       setStatus(`checkout ok — client and server share trace ${result.traceId}`);
-    } else if (!result.sawTraceparent) {
+      return;
+    }
+
+    // Describes what the server ended up with, and nothing more — the cause
+    // belongs to the branches below. No id at all means it recorded nothing,
+    // which only happens with server tracing off, since a non-recording span
+    // carries no ids.
+    const recorded = result.traceId ? `trace ${result.traceId}` : "no trace at all";
+
+    if (!result.sawTraceparent) {
+      // The browser is the missing piece here. When the server also recorded
+      // nothing, that is a second missing piece rather than a consequence of
+      // the first, so it is named separately.
       setStatus(
-        `checkout ok — but no traceparent reached the server, so it opened its own trace (${result.traceId}).\n` +
-          "Nothing sent one: browser tracing is not running (instrumentation-client.js), " +
-          "or something between here and the handler stripped the header.",
+        `checkout ok — but no traceparent reached the server, which recorded ${recorded}.\n` +
+          "Nothing sent one: browser tracing is not running " +
+          "(instrumentation-client.js), or something between here and the " +
+          "handler stripped the header." +
+          (result.traceId
+            ? ""
+            : "\nServer tracing is not running either (instrumentation.js)."),
       );
     } else {
       setStatus(
-        `checkout ok — but the server did not continue this page's trace (it used ${result.traceId ?? "no trace at all"}).\n` +
-          "A traceparent arrived and was not joined: server tracing is not running " +
-          "(instrumentation.js), or the handler is not passing the headers to withTrace.",
+        `checkout ok — but the server did not continue this page's trace; it recorded ${recorded}.\n` +
+          "A traceparent arrived and was not joined. Either server tracing is " +
+          "not running (instrumentation.js), the traceparent that arrived was " +
+          "malformed, or the handler is not passing the headers to withTrace.",
       );
     }
   }
