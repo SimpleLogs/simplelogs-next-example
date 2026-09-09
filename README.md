@@ -84,9 +84,8 @@ for how to tell which one is missing.
 
 ## Keys
 
-Two keys, and the difference between them is not decoration — then a third
-setting that is neither of them. The table covers the keys; the third has its
-own paragraph below it, and `SIMPLELOGS_API_ENDPOINT` its own subsection.
+Two keys, and the difference between them is not decoration. The table covers
+those; three further settings that are neither of them follow it.
 
 | | Prefix | Read |
 |---|---|---|
