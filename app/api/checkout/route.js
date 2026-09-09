@@ -61,12 +61,18 @@ export async function POST() {
           // entry going missing leaves `joined` TRUE, which is exactly what
           // `otelStarted` below exists to answer.
           // `?? {}` is belt-and-braces: 2.0.1's `currentTraceIds()` already
-          // returns `{}` when nothing is active — checked against the installed
-          // dist through the same specifier this file imports, with
-          // `node -e 'import("@simplelogs/next/server").then(m =>
-          // console.log(m.currentTraceIds()))'`, which prints `{}`. The
-          // checkout probe cannot answer this: it runs with a span active, so
-          // it exercises the populated return. The line this replaced spread
+          // returns `{}` when nothing is active. Checked against the installed
+          // dist, through the specifier this file imports, with:
+          //
+          // node -e 'import("@simplelogs/next/server").then(m=>console.log(m.currentTraceIds()))'
+          //
+          // It prints `{}`. That probe runs under Node's own conditions rather
+          // than Next's server graph, which also has `react-server` — but
+          // `@simplelogs/next`'s exports map has no `react-server` branch for
+          // `./server`, only `import` and `require`, so both resolve
+          // `dist/server.mjs` and the probe loads the file this route gets.
+          // The checkout probe cannot answer this at all: it runs with a span
+          // active, so it exercises the populated return. The line this replaced spread
           // the call directly, which tolerated `undefined`; a property read does
           // not, and a 500 here would replace the diagnosis with a bare
           // "failed" — the one outcome this code exists to prevent.

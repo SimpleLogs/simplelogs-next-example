@@ -26,9 +26,10 @@ export const metadata = { title: "SimpleLogs — Next.js example" };
  *
  * The other half of the same config object is `environment`, which tags
  * browser entries with the deployment's environment — `development` or
- * `production` here. It needs no prefix at all — see
- * "Keys" in the README for the two reasons why, only one of which operates
- * here.
+ * `production` here. It needs no prefix at all: this file is a server
+ * component, so the value crosses on the flight payload rather than through
+ * the bundle. See "Keys" in the README for the other reason, which is
+ * `NODE_ENV`-specific and does not operate here.
  *
  * The prefix does NOT protect against a missing build-time value — absent at
  * build, the key is `undefined` forever in whatever captured it, the bundle or

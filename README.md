@@ -423,8 +423,8 @@ grep -o 'src="/_next/static/[^"]*\.js"' .next/server/app/index.html |
   sed 's|src="/_next/|.next/|; s|"$||' | sort -u
 ```
 
-Sum their byte sizes for the first column, and sum `gzip -9 -n -c <file> | wc -c`
-over the same files for the second. `-n` is load-bearing: without it gzip writes
+Sum their byte sizes for **Uncompressed**, and sum `gzip -9 -n -c <file> | wc -c`
+over the same files for **gzipped**. `-n` is load-bearing: without it gzip writes
 each file's own name into the header, so the figure counts something that is not
 the content being measured — 146 B across the eight that make up the
 *Logging + browser tracing* row, each name plus the byte gzip terminates it
