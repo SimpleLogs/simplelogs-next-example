@@ -28,7 +28,7 @@ export default {
   // `@simplelogs/browser`.
   //
   // The entry assumes the two declarations resolve to ONE copy. They do today:
-  // `@simplelogs/next@2.0.0` depends on `@simplelogs/node@^2.0.0` and
+  // `@simplelogs/next@2.0.1` depends on `@simplelogs/node@^2.0.1` and
   // `package.json` asks for the same range, so npm dedupes to a single hoisted
   // install and this externalises the very instance the bundled code imports.
   // If a future `@simplelogs/next` wants a major this range does not cover, a

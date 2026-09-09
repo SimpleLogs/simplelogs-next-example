@@ -569,7 +569,7 @@ switch under Settings → Session Replay.
 While a recording is running, the SDK also captures the page's `console.*`
 calls into it, and they are shipped and indexed with the recording.
 
-Read out of `@simplelogs/browser@2.0.0` and `@simplelogs/react@2.0.0`, since
+Read out of `@simplelogs/browser@2.0.1` and `@simplelogs/react@2.0.1`, since
 none of this is visible from the call site:
 
 - The console methods are wrapped when the replay module loads, not when a
