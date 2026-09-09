@@ -86,7 +86,7 @@ for how to tell which one is missing.
 
 Two env vars, and the difference between them is not decoration — then a third
 setting that is neither of them. The table covers the two env vars; the third
-is the section that follows it.
+has its own paragraph below it.
 
 | | Prefix | Read |
 |---|---|---|
@@ -424,8 +424,10 @@ grep -o 'src="/_next/static/[^"]*\.js"' .next/server/app/index.html |
   sed 's|src="/_next/|.next/|; s|"$||' | sort -u
 ```
 
-Sum their byte sizes with `xargs stat -c %s` for **Uncompressed**, and sum
-`gzip -9 -n -c <file> | wc -c` over the same files for **gzipped**. `-n` is
+Pipe that into `xargs wc -c` for **Uncompressed** — the `total` line is the
+figure — and into `xargs -n1 gzip -9 -n -c | wc -c` for **gzipped**, which is
+exact because `gzip -c` writes one complete member per input, so the
+concatenated stream weighs the sum of the individual sizes. `-n` is
 load-bearing: without it gzip writes each file's own name into the header, so
 the figure counts something that is not the content being measured — 146 B
 across the eight that make up the *Logging + browser tracing* row, each name

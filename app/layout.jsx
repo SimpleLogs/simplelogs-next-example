@@ -26,13 +26,16 @@ export const metadata = { title: "SimpleLogs — Next.js example" };
  *
  * The other half of the same config object is `environment`, which tags
  * browser entries with the deployment's environment — `development` or
- * `production` here. It needs no prefix at all: this file is a server
- * component, so the value crosses on the flight payload rather than through
- * the bundle. The README's "Keys" section gives a second reason — Next inlines
- * `process.env.NODE_ENV` whether or not it carries the prefix. That reason is
- * live in this build, but it does not act on anything written here: the only
- * `NODE_ENV` read in this repo is the one below, and it is a server read. The
- * substitution lands on `@simplelogs/core`'s own default instead, which the
+ * `production` here. It needs no prefix, and the reason is specific to the
+ * NAME rather than to this file: `NODE_ENV` is Next's own, inlined into client
+ * code whether or not it carries the prefix, so there is nothing a prefix
+ * could buy it. The flight payload carries it too — but it carries `clientKey`
+ * above just the same, which keeps its prefix, so that route is not what
+ * separates the two.
+ *
+ * Next's substitution is live in this build without acting on anything written
+ * here: the only `NODE_ENV` read in this repo is the one below, and it is a
+ * server read. It lands on `@simplelogs/core`'s own default instead, which the
  * client bundle carries already replaced — `environment:ev(()=>"production")??
  * "development"`, minified, in the chunk that carries the SDK.
  *
