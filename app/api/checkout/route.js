@@ -86,9 +86,7 @@ export async function POST() {
           // node -e 'import("@simplelogs/node").then(m=>console.log(m.currentTraceIds()))'
           //
           // It prints `{}`. `dist/index.js` — what a `require` would reach —
-          // is not what this route loads; an earlier reading of this comment
-          // had it the other way round, on the assumption that externalising
-          // emits a `require`. In a build, `e.y(...)` in
+          // is not what this route loads. In a build, `e.y(...)` in
           // `.next/server/chunks/[externals]__*.js` is that import, against
           // `e.x(..., ()=>require(...))` for the externals that really are
           // required.

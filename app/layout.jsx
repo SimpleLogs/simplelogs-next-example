@@ -29,8 +29,10 @@ export const metadata = { title: "SimpleLogs — Next.js example" };
  * `production` here. It carries no prefix because prefixing it is not an
  * option: `NODE_ENV` is the framework's name rather than one this project
  * chose, and `NEXT_PUBLIC_NODE_ENV` would be a different variable someone
- * would have to set. The question the key's paragraph answers — whether the
- * prefix is worth keeping — does not arise here at all.
+ * would have to set. Passing a name of this project's own instead would not
+ * bring the prefix back either: this file is a server component, so whatever
+ * it passes crosses as a prop on the flight payload, captured at build time
+ * the same way the key is.
  *
  * Next does inline `process.env.NODE_ENV` into client code without any prefix,
  * and that substitution is live in this build. It acts on

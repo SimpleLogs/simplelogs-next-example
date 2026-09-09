@@ -27,9 +27,9 @@ export default {
   // not `@simplelogs/node` either: Turbopack imports a
   // hashed alias and writes `.next/node_modules/@simplelogs/node-<hash>` as a
   // symlink whose target is this app's own `node_modules/@simplelogs/node` —
-  // so the package has to be findable from here, which is what the
-  // declaration buys. Under npm's hoisting it is, whether or not the app
-  // declares it; under a non-hoisted layout it is not — the same hazard
+  // so the package has to be findable from here. Under npm's hoisting it is
+  // whether or not the app declares it; under a non-hoisted layout only the
+  // declaration puts it there, which is what declaring it buys — the same hazard
   // `instrumentation-client.js` avoids by importing from
   // `@simplelogs/next/otel` rather than reaching through to
   // `@simplelogs/browser`.

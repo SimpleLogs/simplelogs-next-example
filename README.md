@@ -85,7 +85,7 @@ for how to tell which one is missing.
 ## Keys
 
 Two keys, and the difference between them is not decoration. The table covers
-those; three further settings that are neither of them follow it.
+those; the settings that are neither of them follow it.
 
 | | Prefix | Read |
 |---|---|---|
@@ -112,8 +112,12 @@ browser entries from this example are tagged `development` or `production` and
 the environment picker separates them. It carries no `NEXT_PUBLIC_` prefix
 because prefixing it is not an option: `NODE_ENV` is the framework's name
 rather than one you chose, and `NEXT_PUBLIC_NODE_ENV` would be a different
-variable you would have to set yourself. The question the client key's
-paragraph answers — whether the prefix is worth keeping — does not arise here.
+variable you would have to set yourself. Supply your own name instead — the
+paragraph below says when that starts to matter — and the prefix is still not
+needed: the read is in `app/layout.jsx`, a server component, so any value
+crosses as a prop on the flight payload, the same route `clientKey` takes. It
+is captured at build time either way, which is what the bullets below and
+**Self-hosted collectors** are about.
 
 Next does inline `process.env.NODE_ENV` into client code without any prefix,
 and that substitution is live in this build — the docblock in
