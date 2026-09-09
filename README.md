@@ -383,12 +383,13 @@ build:
 `instrumentation-client.js` imports the web tracer statically and runs before
 hydration, so unlike the replay chunk below it is part of first load rather
 than something fetched later. First Load JS for `/`, measured in this example's
-own production build against the same build with that one file removed:
+own production build against the same build with that one file removed —
+summing the scripts the prerendered `/` loads, gzipped at level 9:
 
 | | Uncompressed | gzipped |
 |---|---|---|
-| Logging only | 545,621 B | 163,546 B |
-| Logging + browser tracing | 605,066 B | 179,890 B |
+| Logging only | 662,789 B | 204,392 B |
+| Logging + browser tracing | 722,234 B | 220,689 B |
 
 So about 16 KB gzipped for the page-scoped root span and the `traceparent` that
 comes with it. Delete the file and both numbers drop back — nothing else in the
@@ -612,7 +613,7 @@ config={{ clientKey, sessionReplay: { enabled: false } }}
 
 `enabled` is read at runtime, so no bundler can eliminate rrweb on it — the SDK
 imports it dynamically, and in this example's production build it lands in its
-own chunk of 213,633 B that is simply never fetched. What the flag saves is the
+own chunk of 215,294 B that is simply never fetched. What the flag saves is the
 download, not the build output.
 
 ## Using the split packages directly
