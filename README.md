@@ -51,9 +51,8 @@ That hands the client config down through context, so `useSimpleLogs()` works
 anywhere below it. `environment` tags browser entries with the deployment's
 environment — `development` or `production` here — and takes no `NEXT_PUBLIC_`
 prefix, since `NODE_ENV` is the framework's name rather than one you set; see
-[Keys](#keys). `serverLogger` in a route handler needs
-nothing further — the server SDK reads `SIMPLELOGS_SERVER_KEY` from the
-environment at request time.
+[Keys](#keys). `serverLogger` in a route handler needs nothing further — the
+server SDK reads `SIMPLELOGS_SERVER_KEY` from the environment at request time.
 
 Tracing is a separate opt-in on each side, so a page that only wants logging
 never downloads the web tracer and a server that only wants logging never
@@ -85,9 +84,9 @@ for how to tell which one is missing.
 
 ## Keys
 
-Two env vars, and the difference between them is not decoration — then a third
-setting that is neither of them. The table covers the two env vars; the third
-has its own paragraph below it.
+Two keys, and the difference between them is not decoration — then a third
+setting that is neither of them. The table covers the keys; the third has its
+own paragraph below it, and `SIMPLELOGS_API_ENDPOINT` its own subsection.
 
 | | Prefix | Read |
 |---|---|---|
@@ -120,17 +119,17 @@ paragraph answers — whether the prefix is worth keeping — does not arise her
 Next does inline `process.env.NODE_ENV` into client code without any prefix,
 and that substitution is live in this build — the docblock in
 [`app/layout.jsx`](app/layout.jsx) gives the `grep` that finds it in the chunk
-that carries the SDK. It acts on
-`@simplelogs/core@2.0.1`'s own default rather than on anything this example
-writes: the one read of `process.env.NODE_ENV` in this repo is the layout's,
-and it is a server read, so the value reaches the browser as a prop on the
-flight payload — the same route `clientKey` takes.
+that carries the SDK. It acts on `@simplelogs/core@2.0.1`'s own default rather
+than on anything this example writes: the one read of `process.env.NODE_ENV`
+in this repo is the layout's, and it is a server read, so the value reaches
+the browser as a prop on the flight payload — the same route `clientKey`
+takes.
 
-Worth knowing before you copy it: `@simplelogs/core@2.0.1`'s own default for this
-setting is `process.env.NODE_ENV ?? "development"`, so passing it explicitly
-matches what the SDK would have chosen. It is here to say the deployment's
-environment is a deliberate choice, not to change the tag. A value that differs
-from the default — a name of your own — is where passing it starts to matter.
+That default is `process.env.NODE_ENV ?? "development"`, so passing it
+explicitly matches what the SDK would have chosen. It is here to say the
+deployment's environment is a deliberate choice, not to change the tag. A
+value that differs from the default — a name of your own — is where passing it
+starts to matter.
 
 Be precise about what the prefix does and does not buy:
 
@@ -425,24 +424,25 @@ than something fetched later. The table below gives the weight of `/` on first
 load, measured in this example's own production build against the same build
 with that one file removed. The scripts are the ones the prerendered `/` loads:
 
+Run `next build` first — the paths below only exist after one.
+
 ```sh
 grep -o 'src="/_next/static/[^"]*\.js"' .next/server/app/index.html |
   sed 's|src="/_next/|.next/|; s|"$||' | sort -u
 ```
 
-Run `next build`, then pipe that into `xargs wc -c` for **Uncompressed** — the
-`total` line is the figure — and into `xargs -n1 gzip -9 -n -c | wc -c` for
-**gzipped**. That gives the *Logging + browser tracing* row; delete
-`instrumentation-client.js`, `next build` again and re-run it for the other.
-The gzipped figure is exact because `gzip -c` writes one complete member per
-input, so the concatenated stream weighs the sum of the individual sizes. `-n`
-is load-bearing: without it gzip writes each file's own name into the header,
-so the figure counts something that is not the content being measured — 146 B
-across the eight that make up the *Logging + browser tracing* row, each name
-plus the byte gzip terminates it with. It is not a fixed cost per file: gzip
-stores the base name, and seven of those are 16 characters while one is 26. The
-other row is a different build, so neither the file count nor the total carries
-over to it.
+Pipe that into `xargs wc -c` for **Uncompressed** — the `total` line is the
+figure — and into `xargs -n1 gzip -9 -n -c | wc -c` for **gzipped**. That
+gives the *Logging + browser tracing* row; delete `instrumentation-client.js`,
+`next build` again and re-run it for the other. The gzipped figure is exact
+because `gzip -c` writes one complete member per input, so the concatenated
+stream weighs the sum of the individual sizes. `-n` is load-bearing: without
+it gzip writes each file's own name into the header, so the figure counts
+something that is not the content being measured — 146 B across the eight that
+make up the *Logging + browser tracing* row, each name plus the byte gzip
+terminates it with. It is not a fixed cost per file: gzip stores the base
+name, and seven of those are 16 characters while one is 26. The other row is a
+different build, so neither the file count nor the total carries over to it.
 
 These are not the figures `next build` used to print under **First Load JS**,
 and that column is gone as of Next 16 with Turbopack — so there is nothing in

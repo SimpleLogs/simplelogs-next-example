@@ -67,7 +67,7 @@ export async function POST() {
           // specifier this file imports does not settle it.
           // `@simplelogs/next` does not implement `currentTraceIds` —
           // `dist/server.mjs` re-exports it from `@simplelogs/node` — and
-          // `serverExternalPackages` (`next.config.mjs:39`) turns that
+          // `serverExternalPackages` in `next.config.mjs` turns that
           // bundled import into a runtime `require`. So this route reaches
           // `@simplelogs/node/dist/index.js`, the CJS build. So does
           // `instrumentation.js`'s `await import("@simplelogs/next/server")`,
