@@ -37,9 +37,13 @@ export default {
   // Nor is that range a pin. `^2.0.1` is `>=2.0.1 <3.0.0`, and
   // `package-lock.json` is what fixes 2.0.1 — for the transitive copy too,
   // so it would pin it whether or not this app declared it. What the
-  // declaration buys is a FLOOR this app controls: today the same `^2.0.1`
-  // `@simplelogs/next@2.0.1` itself declares, so it constrains nothing
-  // extra, but the lower bound stops depending on what that package chooses.
+  // declaration buys is a FLOOR over the ROOT copy: today the same `^2.0.1`
+  // `@simplelogs/next@2.0.1` itself declares, so it constrains nothing extra.
+  // And only while the root copy is the one that loads — should that package
+  // ever declare a range the root cannot satisfy, npm nests its own, the
+  // external follows it there (see below), and the running code is on
+  // whatever THAT package chose while this floor governs a copy nothing
+  // loads.
   //
   // So every `2.0.1` dated in this file and in `app/api/checkout/route.js`
   // goes stale on any `@simplelogs/node` change, nested or not — and the

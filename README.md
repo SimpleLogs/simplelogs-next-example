@@ -67,17 +67,18 @@ starts one:
   `withTrace(fn, { carrier: await headers() })` — what continues the incoming
   trace rather than opening a new one.
 - [`next.config.mjs`](next.config.mjs) lists `@simplelogs/node` in
-  `serverExternalPackages`, and [`package.json`](package.json) declares that
-  package alongside `@simplelogs/next`. Without the config entry `initOtel()`
-  and `flushServer()` land in separate module instances, and the flush before
-  the response is silently inert — the trace still joins, and the server's own
-  span is lost on a host that freezes at the response. Externalising leaves
-  the import as a runtime one, and Turbopack resolves it from
-  `@simplelogs/next` — the package that actually imports it — so it resolves
-  whether or not this app declares it. Nor does the declaration pin a
-  version — `^2.0.1` is a range and `package-lock.json` is what pins it,
-  transitively either way. What it sets is a floor this app controls;
-  `next.config.mjs` records the build the resolution was measured on.
+  `serverExternalPackages`. Without it `initOtel()` and `flushServer()` land
+  in separate module instances, and the flush before the response is silently
+  inert — the trace still joins, and the server's own span is lost on a host
+  that freezes at the response. Externalising leaves the import as a runtime
+  one, and Turbopack resolves it from `@simplelogs/next` — the package that
+  actually imports it — so it resolves whether or not this app declares it.
+  ([`package.json`](package.json) does declare it, but that is neither what
+  makes it resolve nor a version pin: `^2.0.1` is a range and
+  `package-lock.json` does the pinning, transitively either way. It sets a
+  floor over the root copy, for as long as the root copy is the one that
+  loads.) `next.config.mjs` records the build the resolution was measured
+  on.
 
 The first three are what make the trace *join*; the fourth is what gets it
 *delivered*. See
@@ -440,9 +441,11 @@ figure — and into `xargs gzip -9 -n -c | wc -c` for **gzipped**.
 The per-file accounting is `gzip -c`'s own doing: handed several files it
 writes a sequence of independently compressed members, so the total is the
 sum of their individual sizes. That is what a browser fetching the scripts as
-separate responses pays. Gzipping the concatenated *contents* as a single member instead comes out
-smaller — 217,619 B against the table's 220,624 — because one member can
-compress redundancy across files that separate members never see. `-n` is the
+separate responses pays. Gzipping the concatenated *contents* as a single
+member instead comes out smaller — 217,619 B against the table's 220,624,
+from the same selection piped into `xargs cat | gzip -9 -c | wc -c` — because
+one member can compress redundancy across files that separate members never
+see. `-n` is the
 flag that genuinely changes the number:
 without it gzip writes each file's own name into the header, so the figure
 counts something that is not the content being measured — 146 B across the
@@ -704,9 +707,8 @@ output.
 `@simplelogs/next` re-exports `@simplelogs/browser`, `@simplelogs/node` and
 `@simplelogs/react` at the paths it has always published, so no *import* here
 has to change — every one of them goes through `@simplelogs/next`. (This
-example does declare `@simplelogs/node` in `package.json`, but to set a
-version floor rather than for an import: see
-[The integration](#the-integration).) If you
+example does declare `@simplelogs/node` in `package.json`, but not for an
+import: see [The integration](#the-integration).) If you
 would rather depend on them directly, `@simplelogs/react`'s provider is the
 same component this example imports.
 
