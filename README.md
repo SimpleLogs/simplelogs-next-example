@@ -49,7 +49,8 @@ import { SimpleLogsProvider } from "@simplelogs/next/provider";
 
 That hands the client config down through context, so `useSimpleLogs()` works
 anywhere below it. `environment` tags browser entries with the deployment's
-name and needs no `NEXT_PUBLIC_` prefix, for reasons under [Keys](#keys).
+environment — `development` or `production` here — and needs no `NEXT_PUBLIC_`
+prefix, for reasons under [Keys](#keys).
 `serverLogger` in a route handler needs nothing further —
 the server SDK reads `SIMPLELOGS_SERVER_KEY` from the environment at request
 time.
@@ -84,7 +85,7 @@ for how to tell which one is missing.
 
 ## Keys
 
-Two env vars, and the difference between them is not decoration — then a third setting that is neither.
+Two env vars, and the difference between them is not decoration — then a third setting that is neither of them.
 
 | | Prefix | Read |
 |---|---|---|
@@ -655,8 +656,8 @@ SDK imports it dynamically, and in this example's production build it lands in
 its own chunk of 215,294 B uncompressed — 65,995 B gzipped at level 9, as
 above. Turn the flag off and that chunk is simply never fetched; it is still
 built. That is one chunk's own size rather than a sum over what `/` loads, so
-it is not comparable with the table above even though both were taken from
-this branch's build. What the flag saves is the download, not the build output.
+it is not comparable with the table above. What the flag saves is the
+download, not the build output.
 
 ## Using the split packages directly
 

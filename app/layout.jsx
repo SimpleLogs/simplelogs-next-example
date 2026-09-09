@@ -25,7 +25,8 @@ export const metadata = { title: "SimpleLogs — Next.js example" };
  * client key is public by design and origin-locked in the dashboard.
  *
  * The other half of the same config object is `environment`, which tags
- * browser entries with the deployment's name. It needs no prefix at all — see
+ * browser entries with the deployment's environment — `development` or
+ * `production` here. It needs no prefix at all — see
  * "Keys" in the README for the two reasons why, only one of which operates
  * here.
  *
