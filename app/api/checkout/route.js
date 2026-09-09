@@ -69,10 +69,14 @@ export async function POST() {
           // `dist/server.mjs` re-exports it from `@simplelogs/node` — and
           // `serverExternalPackages` (`next.config.mjs:39`) turns that
           // bundled import into a runtime `require`. So this route reaches
-          // `@simplelogs/node/dist/index.js`, the CJS build, where an
-          // `import()` reaches `index.mjs`. Separate outputs, and "returns
-          // `{}`" is a per-build fact, so both were run against the installed
-          // dist:
+          // `@simplelogs/node/dist/index.js`, the CJS build. So does
+          // `instrumentation.js`'s `await import("@simplelogs/next/server")`,
+          // since only `@simplelogs/node` is externalised and the wrapper is
+          // bundled — which is why `otelStarted` can be true here at all: both
+          // halves share one module instance. It is a bare `import()` in a
+          // plain `node` process that reaches `index.mjs` instead. Separate
+          // outputs, and "returns `{}`" is a per-build fact, so both were run
+          // against the installed dist:
           //
           // node -e 'console.log(require("@simplelogs/node").currentTraceIds())'
           // node -e 'import("@simplelogs/node").then(m=>console.log(m.currentTraceIds()))'

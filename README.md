@@ -431,11 +431,13 @@ grep -o 'src="/_next/static/[^"]*\.js"' .next/server/app/index.html |
 ```
 
 Pipe that into `xargs wc -c` for **Uncompressed** — the `total` line is the
-figure — and into `xargs -n1 gzip -9 -n -c | wc -c` for **gzipped**, which is
-exact because `gzip -c` writes one complete member per input, so the
-concatenated stream weighs the sum of the individual sizes. `-n` is
-load-bearing: without it gzip writes each file's own name into the header, so
-the figure counts something that is not the content being measured — 146 B
+figure — and into `xargs -n1 gzip -9 -n -c | wc -c` for **gzipped**. Run on
+this tree that gives the *Logging + browser tracing* row; delete
+`instrumentation-client.js`, `next build` again and re-run it for the other.
+The gzipped figure is exact because `gzip -c` writes one complete member per
+input, so the concatenated stream weighs the sum of the individual sizes. `-n`
+is load-bearing: without it gzip writes each file's own name into the header,
+so the figure counts something that is not the content being measured — 146 B
 across the eight that make up the *Logging + browser tracing* row, each name
 plus the byte gzip terminates it with. It is not a fixed cost per file: gzip
 stores the base name, and seven of those are 16 characters while one is 26. The
