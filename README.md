@@ -416,8 +416,12 @@ build:
 hydration, so unlike the replay chunk below it is part of first load rather
 than something fetched later. The table below gives the weight of `/` on first
 load, measured in this example's own production build against the same build
-with that one file removed, by summing the scripts the prerendered `/` loads
-and gzipping at level 9.
+with that one file removed. Take the scripts the prerendered `/` loads —
+`grep -o 'src="/_next/static/[^"]*\.js"' .next/server/app/index.html` — then sum
+their byte sizes for the first column, and sum `gzip -9 -n -c <file> | wc -c`
+over the same files for the second. `-n` is load-bearing: without it gzip
+stores each file's name in its header, and those names are content hashes that
+change every build.
 
 These are not the figures `next build` used to print under **First Load JS**,
 and that column is gone as of Next 16 with Turbopack — so there is nothing in
@@ -428,8 +432,8 @@ artefact of the versions or the method.
 
 | | Uncompressed | gzipped |
 |---|---|---|
-| Logging only | 662,789 B | 204,392 B |
-| Logging + browser tracing | 722,234 B | 220,689 B |
+| Logging only | 662,789 B | 204,395 B |
+| Logging + browser tracing | 722,234 B | 220,624 B |
 
 So about 16 KB gzipped for the page-scoped root span and the `traceparent` that
 comes with it. Delete the file and both numbers drop back — nothing else in the
@@ -653,8 +657,10 @@ config={{ clientKey, sessionReplay: { enabled: false } }}
 
 `enabled` is read at runtime, so no bundler can eliminate rrweb on it — the
 SDK imports it dynamically, and in this example's production build it lands in
-its own chunk of 215,294 B uncompressed — 65,995 B gzipped at level 9, as
-above. Turn the flag off and that chunk is simply never fetched; it is still
+its own chunk of 215,294 B uncompressed — 65,978 B gzipped, taken the same way
+as the table above. It is emitted under a content-hashed name, so find it by
+what is in it rather than by what it is called:
+`grep -l rrweb .next/static/chunks/*.js` matches exactly one file. Turn the flag off and that chunk is simply never fetched; it is still
 built. That is one chunk's own size rather than a sum over what `/` loads, so
 it is not comparable with the table above. What the flag saves is the
 download, not the build output.
