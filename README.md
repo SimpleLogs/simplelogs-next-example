@@ -48,7 +48,8 @@ import { SimpleLogsProvider } from "@simplelogs/next/provider";
 ```
 
 That hands the client config down through context, so `useSimpleLogs()` works
-anywhere below it. `serverLogger` in a route handler needs nothing further —
+anywhere below it. `environment` tags browser entries with the deployment's
+name and needs no `NEXT_PUBLIC_` prefix, for reasons under [Keys](#keys). `serverLogger` in a route handler needs nothing further —
 the server SDK reads `SIMPLELOGS_SERVER_KEY` from the environment at request
 time.
 
@@ -421,9 +422,11 @@ and that column is gone as of Next 16 with Turbopack — which is why the old
 numbers could not be re-taken, and why there is nothing in the current build
 output left to compare these against. This sum appears to count a wider set of
 scripts than that column did: both rows sit a constant 117,168 B above the
-figures this table used to carry, which points at the method rather than at the
-SDK, though it cannot be re-run here to prove it. Compare the two rows with
-each other.
+figures this table used to carry. That rules out the SDK — a per-package delta
+would not land identically on both rows — but not between the method and the
+Next upgrade that removed the column, since a framework change shifts the
+shared script set the same way, and neither can be re-run here to tell them
+apart. Compare the two rows with each other.
 
 | | Uncompressed | gzipped |
 |---|---|---|
@@ -652,8 +655,8 @@ config={{ clientKey, sessionReplay: { enabled: false } }}
 
 `enabled` is read at runtime, so no bundler can eliminate rrweb on it — the SDK
 imports it dynamically, and in this example's production build it lands in its
-own chunk of 215,294 B that is simply never fetched. What the flag saves is the
-download, not the build output.
+own chunk of 215,294 B uncompressed — 65,995 B gzipped — that is simply never
+fetched. What the flag saves is the download, not the build output.
 
 ## Using the split packages directly
 

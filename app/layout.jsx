@@ -24,6 +24,11 @@ export const metadata = { title: "SimpleLogs — Next.js example" };
  * below, not because it is the only way through. Either way it is fine: the
  * client key is public by design and origin-locked in the dashboard.
  *
+ * The other half of the same config object is `environment`, which tags
+ * browser entries with the deployment's name. It needs no prefix either — see
+ * "Keys" in the README for the two reasons why, only one of which operates
+ * here.
+ *
  * The prefix does NOT protect against a missing build-time value — absent at
  * build, the key is `undefined` forever in whatever captured it, the bundle or
  * this layout's payload, and an unprefixed variable read from a prerendered
