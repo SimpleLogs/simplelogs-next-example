@@ -9,8 +9,7 @@ its key from the environment at request time, so route handlers need no setup
 of their own.
 
 Tracing is a further opt-in: two instrumentation files, one call in the route
-handler, and one line of build config with the dependency that makes it
-resolve. All of it is optional — logging, timings,
+handler, and one line of build config. All of it is optional — logging, timings,
 page views and Web Vitals work without any of it — and together it is what makes
 a click and the server work it caused one trace rather than two.
 

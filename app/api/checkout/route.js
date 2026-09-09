@@ -80,12 +80,15 @@ export async function POST() {
           // both halves share one module instance. One command answers it
           // against the installed dist. It goes through
           // `@simplelogs/next/server`, the way this route reaches the package,
-          // rather than through `@simplelogs/node` directly: the external
-          // follows the IMPORTER (see `next.config.mjs`), so a bare specifier
-          // would resolve whatever sits at the app root, which is the same
-          // copy today but would stop being it the moment `@simplelogs/next`
-          // nests its own — the one case where a reassuring answer would be
-          // worthless. (`next.config.mjs` owns the rule for when the
+          // rather than through `@simplelogs/node` directly: in this plain
+          // `node` process and in the build alike, the copy that loads is the
+          // importer's, so a bare specifier would resolve whatever sits at
+          // the app root — the same copy today, but not from the moment
+          // `@simplelogs/next` nests its own, which is the one case where a
+          // reassuring answer would be worthless. (The two get there
+          // differently: ordinary Node resolution here, Turbopack's external
+          // rule in the build — see `next.config.mjs`. They agree, which is
+          // what makes this a fair proxy for what the route does.) (`next.config.mjs` owns the rule for when the
           // versions dated above go stale; nesting is not the only way.)
           //
           // node -e 'import("@simplelogs/next/server").then(m=>console.log(m.currentTraceIds()))'
