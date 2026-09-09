@@ -82,7 +82,7 @@ Two variables, and the difference between them is not decoration.
 | | Prefix | Read |
 |---|---|---|
 | `SIMPLELOGS_SERVER_KEY` | **never** `NEXT_PUBLIC_` | By the server SDK, from the environment, per request |
-| `NEXT_PUBLIC_SIMPLELOGS_CLIENT_KEY` | `NEXT_PUBLIC_` | Inlined into the client bundle at build time |
+| `NEXT_PUBLIC_SIMPLELOGS_CLIENT_KEY` | `NEXT_PUBLIC_` | Captured at build time — inlined into client code, and serialized into this layout's prerendered payload |
 
 **Never prefix the server key.** `NEXT_PUBLIC_` is what puts a value in the
 browser bundle, so prefixing it publishes the secret. It does not need the
@@ -101,11 +101,11 @@ keeping for the reasons below.
 `app/layout.jsx` passes `environment: process.env.NODE_ENV` to the provider, so
 browser entries from this example are tagged `development` or `production` and
 the environment picker separates them. It needs no `NEXT_PUBLIC_` prefix, for two
-reasons the rule above already allows: Next inlines `process.env.NODE_ENV` into
-client code whether or not it carries the prefix — the framework's own
-special case for that one name — and `app/layout.jsx` is a server component, so
-this value and `clientKey` alike reach the browser as props on the flight
-payload.
+reasons — one an exception to the rule above, one a route the rule already
+lists. Next inlines `process.env.NODE_ENV` into client code whether or not it
+carries the prefix, which is the framework's own special case for that one
+name. And `app/layout.jsx` is a server component, so this value and
+`clientKey` alike reach the browser as props on the flight payload.
 
 Worth knowing before you copy it: `@simplelogs/core@2.0.1`'s own default for this
 setting is `process.env.NODE_ENV ?? "development"`, so passing it explicitly

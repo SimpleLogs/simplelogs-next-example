@@ -16,9 +16,12 @@ export const metadata = { title: "SimpleLogs — Next.js example" };
  * production this render may only ever have happened at build time.
  *
  * The client key carries the NEXT_PUBLIC_ prefix because it has to reach the
- * browser, and the browser is the one place a value can only arrive by being
- * in the bundle. That is fine here: the client key is public by design and
- * origin-locked in the dashboard.
+ * browser, and there are two ways it can: inlined into client code, which is
+ * what the prefix buys, or serialized into this layout's prerendered payload
+ * and handed down as a prop. This file is a server component, so the prop is
+ * the route the key actually takes — the prefix is kept for what it buys
+ * below, not because it is the only way through. Either way it is fine: the
+ * client key is public by design and origin-locked in the dashboard.
  *
  * The prefix does NOT protect against a missing build-time value — a
  * NEXT_PUBLIC_ variable absent at build is `undefined` in the bundle forever,
