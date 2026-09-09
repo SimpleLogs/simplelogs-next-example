@@ -50,10 +50,9 @@ import { SimpleLogsProvider } from "@simplelogs/next/provider";
 That hands the client config down through context, so `useSimpleLogs()` works
 anywhere below it. `environment` tags browser entries with the deployment's
 environment — `development` or `production` here — and needs no `NEXT_PUBLIC_`
-prefix, for reasons under [Keys](#keys).
-`serverLogger` in a route handler needs nothing further —
-the server SDK reads `SIMPLELOGS_SERVER_KEY` from the environment at request
-time.
+prefix, for reasons under [Keys](#keys). `serverLogger` in a route handler needs
+nothing further — the server SDK reads `SIMPLELOGS_SERVER_KEY` from the
+environment at request time.
 
 Tracing is a separate opt-in on each side, so a page that only wants logging
 never downloads the web tracer and a server that only wants logging never
@@ -85,7 +84,8 @@ for how to tell which one is missing.
 
 ## Keys
 
-Two env vars, and the difference between them is not decoration — then a third setting that is neither of them.
+Two env vars, and the difference between them is not decoration — then a third
+setting that is neither of them.
 
 | | Prefix | Read |
 |---|---|---|
@@ -426,8 +426,9 @@ grep -o 'src="/_next/static/[^"]*\.js"' .next/server/app/index.html |
 Sum their byte sizes for the first column, and sum `gzip -9 -n -c <file> | wc -c`
 over the same files for the second. `-n` is load-bearing: without it gzip writes
 each file's own name into the header, so the figure counts something that is not
-the content being measured — 17 B on the replay chunk below, which is its
-16-character name plus the NUL byte gzip terminates it with.
+the content being measured — 146 B across these eight, each name plus the byte
+gzip terminates it with. It is not a fixed cost per file: seven of these names
+are 16 characters and one is 26.
 
 These are not the figures `next build` used to print under **First Load JS**,
 and that column is gone as of Next 16 with Turbopack — so there is nothing in
