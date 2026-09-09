@@ -72,9 +72,9 @@ starts one:
   and `flushServer()` land in separate module instances, and the flush before
   the response is silently inert — the trace still joins, and the server's own
   span is lost on a host that freezes at the response. The declaration is what
-  makes the entry resolve: externalising turns the import into a runtime
-  `require`, and an undeclared transitive is only findable under a hoisted
-  `node_modules` layout.
+  makes the entry resolve: externalising leaves the import as a runtime one
+  pointed at this app's own `node_modules`, and an undeclared transitive is
+  only findable there under a hoisted layout.
 
 The first three are what make the trace *join*; the fourth is what gets it
 *delivered*. See
@@ -444,7 +444,7 @@ name, and seven of those are 16 characters while one is 26. The other row is a
 different build, so neither the file count nor the total carries over to it.
 
 These are not the figures `next build` used to print under **First Load JS**,
-and that column is gone as of Next 16 with Turbopack — so there is nothing in
+and that column is gone as of Next 16, whichever bundler — so there is nothing in
 the current build output left to compare these against. Compare the two rows
 with each other instead: same versions, same method, and the only difference
 between the two builds is that one file — so their difference is not an

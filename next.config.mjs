@@ -14,17 +14,22 @@ export default {
   // inside the handler while the same request reported a correctly joined
   // trace.
   //
-  // Externalising it gives both a single `require`d instance. Verified against
-  // a local collector: the handler's span is then exported before the response
+  // Externalising it gives both a single instance. Verified against a local
+  // collector: the handler's span is then exported before the response
   // returns rather than 5s later on the batch timer.
   // Declared in package.json because of THIS entry, not because anything here
   // imports it — nothing does; the route and `instrumentation.js` both go
-  // through `@simplelogs/next/server`. Externalising turns the bundled import
-  // inside that package into a runtime `require("@simplelogs/node")`, resolved
-  // from `.next/server/` by walking up to `node_modules`. Under npm's hoisting
-  // that works whether or not the app declares it; under a non-hoisted layout
-  // it does not — the same hazard `instrumentation-client.js` avoids by
-  // importing from `@simplelogs/next/otel` rather than reaching through to
+  // through `@simplelogs/next/server`. Externalising leaves the bundled import
+  // inside that package as a runtime one — Turbopack's `externalImport`, an
+  // `await import()`, not a `require`, so it is the package's ESM build that
+  // loads. The specifier is not `@simplelogs/node` either: Turbopack imports a
+  // hashed alias and writes `.next/node_modules/@simplelogs/node-<hash>` as a
+  // symlink whose target is this app's own `node_modules/@simplelogs/node` —
+  // so the package has to be findable from here, which is what the
+  // declaration buys. Under npm's hoisting it is, whether or not the app
+  // declares it; under a non-hoisted layout it is not — the same hazard
+  // `instrumentation-client.js` avoids by importing from
+  // `@simplelogs/next/otel` rather than reaching through to
   // `@simplelogs/browser`.
   //
   // The entry assumes the two declarations resolve to ONE copy. They do today:

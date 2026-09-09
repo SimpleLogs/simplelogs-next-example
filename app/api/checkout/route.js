@@ -67,23 +67,26 @@ export async function POST() {
           // specifier this file imports does not settle it.
           // `@simplelogs/next` does not implement `currentTraceIds` —
           // `dist/server.mjs` re-exports it from `@simplelogs/node` — and
-          // `serverExternalPackages` in `next.config.mjs` turns that
-          // bundled import into a runtime `require`. So this route reaches
-          // `@simplelogs/node/dist/index.js`, the CJS build. So does
+          // `serverExternalPackages` in `next.config.mjs` hands that bundled
+          // import to Turbopack's `externalImport`, which is `await
+          // import(id)`, NOT a `require`. So this route reaches
+          // `@simplelogs/node/dist/index.mjs`, the ESM build, and so does
           // `instrumentation.js`'s `await import("@simplelogs/next/server")`,
           // since only `@simplelogs/node` is externalised and the wrapper is
-          // bundled — which is why `otelStarted` can be true here at all: both
-          // halves share one module instance. It is a bare `import()` in a
-          // plain `node` process that reaches `index.mjs` instead. Separate
-          // outputs, and "returns `{}`" is a per-build fact, so both were run
-          // against the installed dist:
+          // bundled — which is why `otelStarted` can be true here at all:
+          // both halves share one module instance. A bare `import()` in a
+          // plain `node` process reaches that same build, so one command
+          // answers it against the installed dist:
           //
-          // node -e 'console.log(require("@simplelogs/node").currentTraceIds())'
           // node -e 'import("@simplelogs/node").then(m=>console.log(m.currentTraceIds()))'
           //
-          // Both print `{}`. The first is the build this route's copy comes
-          // from; the second is recorded because it is the one an earlier
-          // reading of this comment mistook for it.
+          // It prints `{}`. `dist/index.js` — what a `require` would reach —
+          // is not what this route loads; an earlier reading of this comment
+          // had it the other way round, on the assumption that externalising
+          // emits a `require`. In a build, `e.y(...)` in
+          // `.next/server/chunks/[externals]__*.js` is that import, against
+          // `e.x(..., ()=>require(...))` for the externals that really are
+          // required.
           //
           // A POST to this route cannot answer the question at all: it runs
           // with a span active, so it exercises the populated return. The
