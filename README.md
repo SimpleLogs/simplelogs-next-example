@@ -105,7 +105,10 @@ reasons — one an exception to the rule above, one a route the rule already
 lists. Next inlines `process.env.NODE_ENV` into client code whether or not it
 carries the prefix, which is the framework's own special case for that one
 name. And `app/layout.jsx` is a server component, so this value and
-`clientKey` alike reach the browser as props on the flight payload.
+`clientKey` alike reach the browser as props on the flight payload. Here it is
+the second, as with the key: neither read of `process.env.NODE_ENV` in this
+example — the layout's, and one in `app/api/checkout/route.js` — sits in client
+code, so Next inlines it nowhere and the value crosses as a prop.
 
 Worth knowing before you copy it: `@simplelogs/core@2.0.1`'s own default for this
 setting is `process.env.NODE_ENV ?? "development"`, so passing it explicitly
@@ -409,11 +412,12 @@ and gzipping at level 9.
 
 These are not the figures `next build` used to print under **First Load JS**,
 and that column is gone as of Next 16 with Turbopack — which is why the old
-numbers could not be re-taken, and why there is nothing left to compare these
-against. This sum appears to count a wider set of scripts than that column did:
-both rows sit a constant 117,168 B above the figures this table used to carry,
-which points at the method rather than at the SDK, though it cannot be re-run
-here to prove it. Compare the two rows with each other.
+numbers could not be re-taken, and why there is nothing in the current build
+output left to compare these against. This sum appears to count a wider set of
+scripts than that column did: both rows sit a constant 117,168 B above the
+figures this table used to carry, which points at the method rather than at the
+SDK, though it cannot be re-run here to prove it. Compare the two rows with
+each other.
 
 | | Uncompressed | gzipped |
 |---|---|---|

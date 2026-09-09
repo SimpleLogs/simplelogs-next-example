@@ -23,12 +23,13 @@ export const metadata = { title: "SimpleLogs — Next.js example" };
  * below, not because it is the only way through. Either way it is fine: the
  * client key is public by design and origin-locked in the dashboard.
  *
- * The prefix does NOT protect against a missing build-time value — a
- * NEXT_PUBLIC_ variable absent at build is `undefined` in the bundle forever,
- * exactly as an unprefixed one read from a prerendered layout would be. What
- * it buys is honesty: it puts the build-time capture in the variable's name,
- * instead of leaving it an emergent property of whether this route happened to
- * prerender. (`next build` prints which: `/` is `○ Static` here.)
+ * The prefix does NOT protect against a missing build-time value — absent at
+ * build, the key is `undefined` forever in whatever captured it, the bundle or
+ * this layout's payload, and an unprefixed variable read from a prerendered
+ * layout fails the same way. What it buys is honesty: it puts the build-time
+ * capture in the variable's name, instead of leaving it an emergent property
+ * of whether this route happened to prerender. (`next build` prints which: `/`
+ * is `○ Static` here.)
  *
  * The real trade is runtime configurability. If you inject env at boot rather
  * than at build — Docker, Kubernetes — no NEXT_PUBLIC_ variable can see it,
