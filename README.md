@@ -417,7 +417,7 @@ build:
 | [`instrumentation-client.js`](instrumentation-client.js) | `initBrowserOtel()` | The trace, silently |
 | [`instrumentation.js`](instrumentation.js) | `initOtel()` | The trace, silently |
 | [`app/api/checkout/route.js`](app/api/checkout/route.js) | `withTrace(fn, { carrier })` | The trace, silently |
-| [`next.config.mjs`](next.config.mjs) + [`package.json`](package.json) | `serverExternalPackages`, with `@simplelogs/node` declared to pin the version | Delivery of the server span |
+| [`next.config.mjs`](next.config.mjs) | `serverExternalPackages` | Delivery of the server span |
 
 ### What the browser half costs
 
@@ -434,13 +434,14 @@ grep -o 'src="/_next/static/[^"]*\.js"' .next/server/app/index.html |
 ```
 
 Pipe that into `xargs wc -c` for **Uncompressed** — the `total` line is the
-figure — and into `xargs -n1 gzip -9 -n -c | wc -c` for **gzipped**.
+figure — and into `xargs gzip -9 -n -c | wc -c` for **gzipped**.
 
-The per-file accounting is `gzip -c`'s own behaviour rather than something
-`-n1` buys: handed several files it already writes a sequence of
-independently compressed members, so dropping `-n1` gives a byte-identical
-stream — checked on this chunk set, 220,624 B either way. What the figure
-measures is what a browser fetching the scripts as separate responses pays.
+The per-file accounting is `gzip -c`'s own doing: handed several files it
+writes a sequence of independently compressed members, so the total is the
+sum of their individual sizes. That is what a browser fetching the scripts as
+separate responses pays. (An earlier version of this recipe passed `-n1` and
+credited it with that. It buys nothing here — checked on this chunk set, the
+stream is byte-identical at 220,624 B with or without it.)
 Gzipping the concatenated *contents* as a single member instead comes out
 smaller — 217,619 B against the table's 220,624 — because one member can
 compress redundancy across files that separate members never see. `-n` is the

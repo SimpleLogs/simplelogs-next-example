@@ -78,11 +78,17 @@ export async function POST() {
           // `instrumentation.js`'s `await import("@simplelogs/next/server")`,
           // since only `@simplelogs/node` is externalised and the wrapper is
           // bundled — which is why `otelStarted` can be true here at all:
-          // both halves share one module instance. A bare `import()` in a
-          // plain `node` process reaches that same build, so one command
-          // answers it against the installed dist:
+          // both halves share one module instance. One command answers it
+          // against the installed dist. It goes through
+          // `@simplelogs/next/server`, the way this route reaches the package,
+          // rather than through `@simplelogs/node` directly: the external
+          // follows the IMPORTER (see `next.config.mjs`), so a bare specifier
+          // would resolve this app's own copy, which is the same one today but
+          // would stop being it the moment `@simplelogs/next` nests its own —
+          // the case that makes the version dated here go stale, and so the
+          // one case where a reassuring answer would be worthless:
           //
-          // node -e 'import("@simplelogs/node").then(m=>console.log(m.currentTraceIds()))'
+          // node -e 'import("@simplelogs/next/server").then(m=>console.log(m.currentTraceIds()))'
           //
           // It prints `{}`. `dist/index.js` — what a `require` would reach —
           // is not what this route loads. In a build, `e.y(...)` in
