@@ -84,10 +84,11 @@ Two variables, and the difference between them is not decoration.
 | `SIMPLELOGS_SERVER_KEY` | **never** `NEXT_PUBLIC_` | By the server SDK, from the environment, per request |
 | `NEXT_PUBLIC_SIMPLELOGS_CLIENT_KEY` | `NEXT_PUBLIC_` | Captured at build time — inlined into client code where client code reads it, or serialized into a prerendered payload where a server component does. Here it is the second: only `app/layout.jsx` reads it |
 
-**Never prefix the server key.** `NEXT_PUBLIC_` is what puts a value in the
-browser bundle, so prefixing it publishes the secret. It does not need the
-prefix: the server SDK reads it from the environment at request time, which is
-why this example does not pass it to the provider at all.
+**Never prefix the server key.** `NEXT_PUBLIC_` is what makes a value eligible
+to be inlined into client code, so prefixing the secret puts it one client-side
+read away from being published. It does not need the prefix: the server SDK
+reads it from the environment at request time, which is why this example does
+not pass it to the provider at all.
 
 **Do prefix the client key.** It has to reach the browser, and there are two
 ways it can: inlined into client code, which is what the `NEXT_PUBLIC_` prefix
