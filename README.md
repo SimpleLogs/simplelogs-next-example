@@ -82,7 +82,7 @@ Two variables, and the difference between them is not decoration.
 | | Prefix | Read |
 |---|---|---|
 | `SIMPLELOGS_SERVER_KEY` | **never** `NEXT_PUBLIC_` | By the server SDK, from the environment, per request |
-| `NEXT_PUBLIC_SIMPLELOGS_CLIENT_KEY` | `NEXT_PUBLIC_` | Captured at build time — inlined into client code, and serialized into this layout's prerendered payload |
+| `NEXT_PUBLIC_SIMPLELOGS_CLIENT_KEY` | `NEXT_PUBLIC_` | Captured at build time — inlined into client code where client code reads it, or serialized into a prerendered payload where a server component does. Here it is the second: only `app/layout.jsx` reads it |
 
 **Never prefix the server key.** `NEXT_PUBLIC_` is what puts a value in the
 browser bundle, so prefixing it publishes the secret. It does not need the
@@ -407,12 +407,13 @@ load, measured in this example's own production build against the same build
 with that one file removed, by summing the scripts the prerendered `/` loads
 and gzipping at level 9.
 
-These are not the figures `next build` prints under **First Load JS**: this sum
-counts a wider set of scripts than that column does. Both rows sit a constant
-117,168 B above the figures this table used to carry, which points at the
-method rather than at the SDK — though the old figures came from a `next build`
-that no longer prints them, so that cannot be re-run here to prove it. Compare
-the two rows with each other, not with the build output.
+These are not the figures `next build` used to print under **First Load JS**,
+and that column is gone as of Next 16 with Turbopack — which is why the old
+numbers could not be re-taken, and why there is nothing left to compare these
+against. This sum appears to count a wider set of scripts than that column did:
+both rows sit a constant 117,168 B above the figures this table used to carry,
+which points at the method rather than at the SDK, though it cannot be re-run
+here to prove it. Compare the two rows with each other.
 
 | | Uncompressed | gzipped |
 |---|---|---|
