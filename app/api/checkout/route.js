@@ -60,11 +60,51 @@ export async function POST() {
           // is a separate question this cannot see — the `serverExternalPackages`
           // entry going missing leaves `joined` TRUE, which is exactly what
           // `otelStarted` below exists to answer.
-          // `?? {}` is belt-and-braces: 2.0.0's `currentTraceIds()` already
-          // returns `{}` when nothing is active. The line this replaced spread
-          // the call directly, which tolerated `undefined`; a property read does
-          // not, and a 500 here would replace the diagnosis with a bare
-          // "failed" — the one outcome this code exists to prevent.
+          // `?? {}` is belt-and-braces: 2.0.1's `currentTraceIds()` already
+          // returns `{}` when nothing is active.
+          //
+          // Which build that is checked against is not obvious, and the
+          // specifier this file imports does not settle it.
+          // `@simplelogs/next` does not implement `currentTraceIds` —
+          // `dist/server.mjs` re-exports it from `@simplelogs/node` — and
+          // `serverExternalPackages` in `next.config.mjs` hands that bundled
+          // import to Turbopack's `externalImport`, which is `await
+          // import(id)`, NOT a `require`. That reaches the package's ESM
+          // build because `@simplelogs/node@2.0.1` maps the `import`
+          // condition to `dist/index.mjs` and `require` to `dist/index.js`;
+          // the import alone does not decide it. So this route reaches
+          // `@simplelogs/node/dist/index.mjs`, the ESM build, and so does
+          // `instrumentation.js`'s `await import("@simplelogs/next/server")`,
+          // since only `@simplelogs/node` is externalised and the wrapper is
+          // bundled — which is why `otelStarted` can be true here at all:
+          // both halves share one module instance. One command answers it
+          // against the installed dist. It goes through
+          // `@simplelogs/next/server`, the way this route reaches the package,
+          // rather than through `@simplelogs/node` directly: in this plain
+          // `node` process and in the build alike, the copy that loads is the
+          // importer's, so a bare specifier would resolve whatever sits at
+          // the app root — the same copy today, but not from the moment
+          // `@simplelogs/next` nests its own, which is the one case where a
+          // reassuring answer would be worthless. (The two get there
+          // differently: ordinary Node resolution here, Turbopack's external
+          // rule in the build — see `next.config.mjs`. They agree, which is
+          // what makes this a fair proxy for what the route does.) (`next.config.mjs` owns the rule for when the
+          // versions dated above go stale; nesting is not the only way.)
+          //
+          // node -e 'import("@simplelogs/next/server").then(m=>console.log(m.currentTraceIds()))'
+          //
+          // It prints `{}`. `dist/index.js` — what a `require` would reach —
+          // is not what this route loads. In a build, `e.y(...)` in
+          // `.next/server/chunks/[externals]__*.js` is that import, against
+          // `e.x(..., ()=>require(...))` for the externals that really are
+          // required.
+          //
+          // A POST to this route cannot answer the question at all: it runs
+          // with a span active, so it exercises the populated return. The
+          // line this replaced spread the call directly, which tolerated
+          // `undefined`; a property read does not, and a 500 here would
+          // replace the diagnosis with a bare "failed" — the one outcome this
+          // code exists to prevent.
           const ids = currentTraceIds() ?? {};
           const joined = Boolean(inboundTraceId) && ids.traceId === inboundTraceId;
 

@@ -9,8 +9,7 @@ its key from the environment at request time, so route handlers need no setup
 of their own.
 
 Tracing is a further opt-in: two instrumentation files, one call in the route
-handler, and one line of build config with the dependency that makes it
-resolve. All of it is optional — logging, timings,
+handler, and one line of build config. All of it is optional — logging, timings,
 page views and Web Vitals work without any of it — and together it is what makes
 a click and the server work it caused one trace rather than two.
 
@@ -37,15 +36,22 @@ Requires Node 20 or newer.
 ```jsx
 import { SimpleLogsProvider } from "@simplelogs/next/provider";
 
-<SimpleLogsProvider config={{ clientKey: process.env.NEXT_PUBLIC_SIMPLELOGS_CLIENT_KEY }}>
+<SimpleLogsProvider
+  config={{
+    clientKey: process.env.NEXT_PUBLIC_SIMPLELOGS_CLIENT_KEY,
+    environment: process.env.NODE_ENV,
+  }}
+>
   {children}
 </SimpleLogsProvider>
 ```
 
 That hands the client config down through context, so `useSimpleLogs()` works
-anywhere below it. `serverLogger` in a route handler needs nothing further —
-the server SDK reads `SIMPLELOGS_SERVER_KEY` from the environment at request
-time.
+anywhere below it. `environment` tags browser entries with the deployment's
+environment — `development` or `production` here — and takes no `NEXT_PUBLIC_`
+prefix, since `NODE_ENV` is the framework's name rather than one you chose; see
+[Keys](#keys). `serverLogger` in a route handler needs nothing further — the
+server SDK reads `SIMPLELOGS_SERVER_KEY` from the environment at request time.
 
 Tracing is a separate opt-in on each side, so a page that only wants logging
 never downloads the web tracer and a server that only wants logging never
@@ -60,14 +66,13 @@ starts one:
   `withTrace(fn, { carrier: await headers() })` — what continues the incoming
   trace rather than opening a new one.
 - [`next.config.mjs`](next.config.mjs) lists `@simplelogs/node` in
-  `serverExternalPackages`, and [`package.json`](package.json) declares that
-  package alongside `@simplelogs/next`. Without the config entry `initOtel()`
-  and `flushServer()` land in separate module instances, and the flush before
-  the response is silently inert — the trace still joins, and the server's own
-  span is lost on a host that freezes at the response. The declaration is what
-  makes the entry resolve: externalising turns the import into a runtime
-  `require`, and an undeclared transitive is only findable under a hoisted
-  `node_modules` layout.
+  `serverExternalPackages`. Without it `initOtel()` and `flushServer()` land
+  in separate module instances, and the flush before the response is silently
+  inert — the trace still joins, and the server's own span is lost on a host
+  that freezes at the response. Externalising leaves the import as a runtime
+  one, and Turbopack resolves it from `@simplelogs/next` — the package that
+  actually imports it — so it resolves whether or not this app declares it,
+  and this app does not. `next.config.mjs` records how that was measured.
 
 The first three are what make the trace *join*; the fourth is what gets it
 *delivered*. See
@@ -77,28 +82,60 @@ for how to tell which one is missing.
 
 ## Keys
 
-Two variables, and the difference between them is not decoration.
+Two keys, and the difference between them is not decoration. The table covers
+those; the settings that are neither of them follow it.
 
 | | Prefix | Read |
 |---|---|---|
 | `SIMPLELOGS_SERVER_KEY` | **never** `NEXT_PUBLIC_` | By the server SDK, from the environment, per request |
-| `NEXT_PUBLIC_SIMPLELOGS_CLIENT_KEY` | `NEXT_PUBLIC_` | Inlined into the client bundle at build time |
+| `NEXT_PUBLIC_SIMPLELOGS_CLIENT_KEY` | `NEXT_PUBLIC_` | Captured at build time — inlined into client code where client code reads it, or serialized into a prerendered payload where a server component does. Here it is the second: only `app/layout.jsx` reads it |
 
-**Never prefix the server key.** `NEXT_PUBLIC_` is what puts a value in the
-browser bundle, so prefixing it publishes the secret. It does not need the
-prefix: the server SDK reads it from the environment at request time, which is
-why this example does not pass it to the provider at all.
+**Never prefix the server key.** `NEXT_PUBLIC_` is what makes a value eligible
+to be inlined into client code, so prefixing the secret puts it one client-side
+read away from being published. It does not need the prefix: the server SDK
+reads it from the environment at request time, which is why this example does
+not pass it to the provider at all.
 
-**Do prefix the client key.** It has to reach the browser, and the bundle is
-the only way a value gets there. That is fine — the key is public by design and
-origin-locked in the dashboard.
+**Do prefix the client key.** It has to reach the browser, and there are two
+ways it can: inlined into client code, which is what the `NEXT_PUBLIC_` prefix
+buys, or serialized into a server component's prerendered payload and handed
+down as a prop — which is the route it actually takes here, since
+`app/layout.jsx` is a server component. Either way it is fine: the key is
+public by design and origin-locked in the dashboard, and the prefix is worth
+keeping for the reasons below.
+
+**`environment` is a third setting, and it is not a SimpleLogs env var.**
+`app/layout.jsx` passes `environment: process.env.NODE_ENV` to the provider, so
+browser entries from this example are tagged `development` or `production` and
+the environment picker separates them. It carries no `NEXT_PUBLIC_` prefix
+because prefixing it is not an option: `NODE_ENV` is the framework's name
+rather than one you chose, and `NEXT_PUBLIC_NODE_ENV` would be a different
+variable you would have to set yourself. That reasoning is about `NODE_ENV`
+and nothing else: supply a name of your own — below says when that starts to
+matter — and it is an ordinary setting again, with the client key's
+trade-offs and the same build-time capture.
+
+Next does inline `process.env.NODE_ENV` into client code without any prefix,
+and that substitution is live in this build — the docblock in
+[`app/layout.jsx`](app/layout.jsx) gives the `grep` that finds it in the chunk
+that carries the SDK. It acts on `@simplelogs/core@2.0.1`'s own default rather
+than on anything this example writes: the one read of `process.env.NODE_ENV`
+in this repo is the layout's, and it is a server read, so the value reaches
+the browser as a prop on the flight payload — the same route `clientKey`
+takes.
+
+That default is `process.env.NODE_ENV ?? "development"`, so passing it
+explicitly matches what the SDK would have chosen. It is here to say the
+deployment's environment is a deliberate choice, not to change the tag. A
+value that differs from the default — a name of your own — is where passing it
+starts to matter.
 
 Be precise about what the prefix does and does not buy:
 
-- It does **not** protect you from a missing build-time value. A `NEXT_PUBLIC_`
-  variable absent at build is `undefined` in the bundle forever — exactly what
-  an unprefixed variable read from a prerendered layout would be. Both fail the
-  same way.
+- It does **not** protect you from a missing build-time value. Absent at build,
+  a `NEXT_PUBLIC_` variable is `undefined` forever in whatever captured it, the
+  bundle or a prerendered payload — exactly what an unprefixed variable read
+  from a prerendered layout would be. Both fail the same way.
 - It **does** make the build-time capture explicit. The name says "this is
   baked in", instead of it being an emergent property of whether this route
   happened to prerender. `next build` prints which: `/` is `○ Static` here, so
@@ -376,19 +413,59 @@ build:
 | [`instrumentation-client.js`](instrumentation-client.js) | `initBrowserOtel()` | The trace, silently |
 | [`instrumentation.js`](instrumentation.js) | `initOtel()` | The trace, silently |
 | [`app/api/checkout/route.js`](app/api/checkout/route.js) | `withTrace(fn, { carrier })` | The trace, silently |
-| [`next.config.mjs`](next.config.mjs) + [`package.json`](package.json) | `serverExternalPackages`, and `@simplelogs/node` declared so it resolves | Delivery of the server span |
+| [`next.config.mjs`](next.config.mjs) | `serverExternalPackages` | Delivery of the server span |
 
 ### What the browser half costs
 
 `instrumentation-client.js` imports the web tracer statically and runs before
 hydration, so unlike the replay chunk below it is part of first load rather
-than something fetched later. First Load JS for `/`, measured in this example's
-own production build against the same build with that one file removed:
+than something fetched later. The table below gives the weight of `/` on first
+load, measured in this example's own production build against the same build
+with that one file removed. The scripts are the ones the prerendered `/` loads,
+so run `next build` first — the paths below only exist after one:
+
+```sh
+grep -o 'src="/_next/static/[^"]*\.js"' .next/server/app/index.html |
+  sed 's|src="/_next/|.next/|; s|"$||' | sort -u
+```
+
+Pipe that into `xargs wc -c` for **Uncompressed** — the `total` line is the
+figure — and into `xargs gzip -9 -n -c | wc -c` for **gzipped**.
+
+The per-file accounting is `gzip -c`'s own doing: handed several files it
+writes a sequence of independently compressed members, so the total is the
+sum of their individual sizes. That is what a browser fetching the scripts as
+separate responses pays. Gzipping the concatenated *contents* as a single
+member instead comes out smaller — 217,619 B against the table's 220,624,
+from the same selection piped into `xargs cat | gzip -9 -c | wc -c` — because
+one member can compress redundancy across files that separate members never
+see. That recipe drops `-n` because gzip reading stdin has no original
+filename to store, so the flag is a no-op there rather than a difference
+between the two numbers. On the per-file recipe it is the flag that genuinely
+changes the number:
+without it gzip writes each file's own name into the header, so the figure
+counts something that is not the content being measured — 146 B across the
+eight that make up the *Logging + browser tracing* row, each name plus the
+byte gzip terminates it with. It is not a fixed cost per file: gzip stores the
+base name, and seven of those are 16 characters while one is 26.
+
+That gives the *Logging + browser tracing* row; delete
+`instrumentation-client.js`, `next build` again and re-run it for the other,
+then `git checkout instrumentation-client.js` and rebuild to put the browser
+half back. The other row is a different build, so neither the file count nor
+the total carries over to it.
+
+These are not the figures `next build` used to print under **First Load JS**,
+and that column is gone as of Next 16, whichever bundler — so there is nothing in
+the current build output left to compare these against. Compare the two rows
+with each other instead: same versions, same method, and the only difference
+between the two builds is that one file — so their difference is not an
+artefact of the versions or the method.
 
 | | Uncompressed | gzipped |
 |---|---|---|
-| Logging only | 545,621 B | 163,546 B |
-| Logging + browser tracing | 605,066 B | 179,890 B |
+| Logging only | 662,789 B | 204,395 B |
+| Logging + browser tracing | 722,234 B | 220,624 B |
 
 So about 16 KB gzipped for the page-scoped root span and the `traceparent` that
 comes with it. Delete the file and both numbers drop back — nothing else in the
@@ -569,7 +646,7 @@ switch under Settings → Session Replay.
 While a recording is running, the SDK also captures the page's `console.*`
 calls into it, and they are shipped and indexed with the recording.
 
-Read out of `@simplelogs/browser@2.0.0` and `@simplelogs/react@2.0.0`, since
+Read out of `@simplelogs/browser@2.0.1` and `@simplelogs/react@2.0.1`, since
 none of this is visible from the call site:
 
 - The console methods are wrapped when the replay module loads, not when a
@@ -610,18 +687,23 @@ patch together:
 config={{ clientKey, sessionReplay: { enabled: false } }}
 ```
 
-`enabled` is read at runtime, so no bundler can eliminate rrweb on it — the SDK
-imports it dynamically, and in this example's production build it lands in its
-own chunk of 213,633 B that is simply never fetched. What the flag saves is the
-download, not the build output.
+`enabled` is read at runtime, so no bundler can eliminate rrweb on it — the
+SDK imports it dynamically, and in this example's production build it lands in
+its own chunk of 215,294 B uncompressed — 65,978 B gzipped, with the same
+`gzip -9 -n -c` as the table above. It is emitted under a content-hashed name,
+so find it by what is in it rather than by what it is called:
+`grep -l rrweb .next/static/chunks/*.js` matches exactly one file. Turn the
+flag off and that chunk is simply never fetched; it is still built. That is one
+chunk's own size rather than a sum over what `/` loads, so it is not comparable
+with the table above. What the flag saves is the download, not the build
+output.
 
 ## Using the split packages directly
 
 `@simplelogs/next` re-exports `@simplelogs/browser`, `@simplelogs/node` and
 `@simplelogs/react` at the paths it has always published, so no *import* here
-has to change — every one of them goes through `@simplelogs/next`. (This
-example does declare `@simplelogs/node` in `package.json`, but for resolution
-rather than for an import: see [The integration](#the-integration).) If you
+has to change — every one of them goes through `@simplelogs/next`, and this
+example declares none of them separately. If you
 would rather depend on them directly, `@simplelogs/react`'s provider is the
 same component this example imports.
 

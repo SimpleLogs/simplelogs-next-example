@@ -14,27 +14,40 @@ export default {
   // inside the handler while the same request reported a correctly joined
   // trace.
   //
-  // Externalising it gives both a single `require`d instance. Verified against
-  // a local collector: the handler's span is then exported before the response
+  // Externalising it gives both a single instance. Verified against a local
+  // collector: the handler's span is then exported before the response
   // returns rather than 5s later on the batch timer.
-  // Declared in package.json because of THIS entry, not because anything here
-  // imports it — nothing does; the route and `instrumentation.js` both go
-  // through `@simplelogs/next/server`. Externalising turns the bundled import
-  // inside that package into a runtime `require("@simplelogs/node")`, resolved
-  // from `.next/server/` by walking up to `node_modules`. Under npm's hoisting
-  // that works whether or not the app declares it; under a non-hoisted layout
-  // it does not — the same hazard `instrumentation-client.js` avoids by
-  // importing from `@simplelogs/next/otel` rather than reaching through to
-  // `@simplelogs/browser`.
+  // Nothing in this app imports `@simplelogs/node`; the route and
+  // `instrumentation.js` both go through `@simplelogs/next/server`.
+  // Externalising leaves the bundled import inside that package as a runtime
+  // one — Turbopack's `externalImport`, an `await import()`, not a `require`.
+  // That reaches the package's ESM build because `@simplelogs/node@2.0.1` maps
+  // the `import` condition to `dist/index.mjs`; the import alone does not
+  // decide it. The specifier is not `@simplelogs/node` either: Turbopack
+  // imports a hashed alias and writes `.next/node_modules/@simplelogs/node-<hash>`
+  // as a symlink.
   //
-  // The entry assumes the two declarations resolve to ONE copy. They do today:
-  // `@simplelogs/next@2.0.0` depends on `@simplelogs/node@^2.0.0` and
-  // `package.json` asks for the same range, so npm dedupes to a single hoisted
-  // install and this externalises the very instance the bundled code imports.
-  // If a future `@simplelogs/next` wants a major this range does not cover, a
-  // second copy nests under it, the bundled code imports the nested one and
-  // this resolves the root one — separate module instances again. `otelStarted`
-  // in the checkout response is what would show that, so it is worth a look
-  // after bumping either of these.
+  // That symlink follows the IMPORTER, not this app. Measured by installing a
+  // second copy at `node_modules/@simplelogs/next/node_modules/@simplelogs/node`
+  // and rebuilding: the alias retargeted onto the nested copy, hash and all.
+  // So `@simplelogs/next`'s own dependency is what makes the external
+  // resolve, hoisted layout or not — which is why `package.json` does not
+  // declare `@simplelogs/node`.
+  //
+  // Do not add it back. It would not make the external resolve, and
+  // `package-lock.json` fixes the transitive copy either way. In the one
+  // case where it would act at all it costs something — npm nests to resolve
+  // a conflict with a ROOT declaration, so should `@simplelogs/next` ever
+  // want a major this app's range refused, the declaration is what strands a
+  // root copy nothing imports. Undeclared, that major is simply hoisted and
+  // there is one copy.
+  //
+  // The versions dated in this file and in `app/api/checkout/route.js` go
+  // stale on any `@simplelogs/node` change. Check the installed version
+  // after a bump (`npm ls @simplelogs/node`) rather than the checkout
+  // response: a bump produces no split for `otelStarted` to report, because
+  // the external follows the importer either way. A MISSING
+  // `serverExternalPackages` entry still splits the instance, and that is
+  // the case `otelStarted` exists to catch.
   serverExternalPackages: ["@simplelogs/node"],
 };
