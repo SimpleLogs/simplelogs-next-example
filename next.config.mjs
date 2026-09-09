@@ -31,15 +31,23 @@ export default {
   // second copy at `node_modules/@simplelogs/next/node_modules/@simplelogs/node`
   // and rebuilding: the alias retargeted onto the nested copy, hash and all.
   // So `@simplelogs/next`'s own dependency is what makes the external resolve,
-  // hoisted layout or not — the `package.json` range below pins the version
-  // this file and the route's comments are written against, and is not what
-  // puts the package within reach.
+  // hoisted layout or not, and the `package.json` range is not what puts the
+  // package within reach.
+  //
+  // What that range buys is a version pin — but only while the root copy is
+  // the one that loads. If `@simplelogs/next` ever nests its own, the
+  // external follows it there and the range stops describing what runs:
+  // every `2.0.1` dated in this file and in `app/api/checkout/route.js` would
+  // then be written against a copy nothing loads. So on a `@simplelogs/next`
+  // major, look for a nested `@simplelogs/node` rather than trusting the
+  // checkout response — see why below.
   //
   // The same measurement retires the split-instance hazard this comment used
-  // to warn about. A future `@simplelogs/next` wanting a major outside that
-  // range nests its own copy, and the external follows it there, so both
-  // halves stay on ONE instance rather than splitting. `otelStarted` in the
-  // checkout response is still what would show a split, so it stays worth a
-  // look after bumping either of these.
+  // to warn about. It said a nested copy would leave the bundled code
+  // importing the nested one while this resolved the root one — separate
+  // module instances again. The nested build IS that scenario, and the
+  // external followed the importer into the nest, so both halves stay on ONE
+  // instance. Which is also why `otelStarted` cannot be the tripwire for the
+  // paragraph above: there is no split for it to report.
   serverExternalPackages: ["@simplelogs/node"],
 };

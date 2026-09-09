@@ -417,7 +417,7 @@ build:
 | [`instrumentation-client.js`](instrumentation-client.js) | `initBrowserOtel()` | The trace, silently |
 | [`instrumentation.js`](instrumentation.js) | `initOtel()` | The trace, silently |
 | [`app/api/checkout/route.js`](app/api/checkout/route.js) | `withTrace(fn, { carrier })` | The trace, silently |
-| [`next.config.mjs`](next.config.mjs) + [`package.json`](package.json) | `serverExternalPackages`, and `@simplelogs/node` declared so it resolves | Delivery of the server span |
+| [`next.config.mjs`](next.config.mjs) + [`package.json`](package.json) | `serverExternalPackages`, with `@simplelogs/node` declared to pin the version | Delivery of the server span |
 
 ### What the browser half costs
 
@@ -436,12 +436,15 @@ grep -o 'src="/_next/static/[^"]*\.js"' .next/server/app/index.html |
 Pipe that into `xargs wc -c` for **Uncompressed** — the `total` line is the
 figure — and into `xargs -n1 gzip -9 -n -c | wc -c` for **gzipped**.
 
-`-n1` is part of the measurement rather than a shell detail: it compresses
-each script on its own and sums the members, which is what a browser fetching
-them as separate responses pays. Gzipping the concatenated *contents* as a
-single member instead comes out smaller — 217,619 B against the table's
-220,624 — because one member can compress redundancy across files that
-separate members never see. `-n` is load-bearing for a different reason:
+The per-file accounting is `gzip -c`'s own behaviour rather than something
+`-n1` buys: handed several files it already writes a sequence of
+independently compressed members, so dropping `-n1` gives a byte-identical
+stream — checked on this chunk set, 220,624 B either way. What the figure
+measures is what a browser fetching the scripts as separate responses pays.
+Gzipping the concatenated *contents* as a single member instead comes out
+smaller — 217,619 B against the table's 220,624 — because one member can
+compress redundancy across files that separate members never see. `-n` is the
+flag that genuinely changes the number:
 without it gzip writes each file's own name into the header, so the figure
 counts something that is not the content being measured — 146 B across the
 eight that make up the *Logging + browser tracing* row, each name plus the
@@ -702,8 +705,8 @@ output.
 `@simplelogs/next` re-exports `@simplelogs/browser`, `@simplelogs/node` and
 `@simplelogs/react` at the paths it has always published, so no *import* here
 has to change — every one of them goes through `@simplelogs/next`. (This
-example does declare `@simplelogs/node` in `package.json`, but for resolution
-rather than for an import: see [The integration](#the-integration).) If you
+example does declare `@simplelogs/node` in `package.json`, but to pin the
+version rather than for an import: see [The integration](#the-integration).) If you
 would rather depend on them directly, `@simplelogs/react`'s provider is the
 same component this example imports.
 
