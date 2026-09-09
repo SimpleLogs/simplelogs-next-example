@@ -37,7 +37,12 @@ Requires Node 20 or newer.
 ```jsx
 import { SimpleLogsProvider } from "@simplelogs/next/provider";
 
-<SimpleLogsProvider config={{ clientKey: process.env.NEXT_PUBLIC_SIMPLELOGS_CLIENT_KEY }}>
+<SimpleLogsProvider
+  config={{
+    clientKey: process.env.NEXT_PUBLIC_SIMPLELOGS_CLIENT_KEY,
+    environment: process.env.NODE_ENV,
+  }}
+>
   {children}
 </SimpleLogsProvider>
 ```
