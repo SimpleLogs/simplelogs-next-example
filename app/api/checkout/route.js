@@ -72,9 +72,8 @@ export async function POST() {
           // import(id)`, NOT a `require`. Which file that lands on is
           // `@simplelogs/node`'s own exports map rather than a consequence of
           // the import: 2.0.1 maps the `import` condition to
-          // `dist/index.mjs` and `require` to `dist/index.js`, so a package
-          // declaring only the latter would resolve the other way from the
-          // same call. So this route reaches
+          // `dist/index.mjs` and `require` to `dist/index.js`. So this route
+          // reaches
           // `@simplelogs/node/dist/index.mjs`, the ESM build, and so does
           // `instrumentation.js`'s `await import("@simplelogs/next/server")`,
           // since only `@simplelogs/node` is externalised and the wrapper is

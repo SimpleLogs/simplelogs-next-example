@@ -112,12 +112,10 @@ browser entries from this example are tagged `development` or `production` and
 the environment picker separates them. It carries no `NEXT_PUBLIC_` prefix
 because prefixing it is not an option: `NODE_ENV` is the framework's name
 rather than one you chose, and `NEXT_PUBLIC_NODE_ENV` would be a different
-variable you would have to set yourself. Supply your own name instead — the
-paragraph below says when that starts to matter — and the prefix is still not
-needed: the read is in `app/layout.jsx`, a server component, so any value
-crosses as a prop on the flight payload, the same route `clientKey` takes. It
-is captured at build time either way, which is what the bullets below and
-**Self-hosted collectors** are about.
+variable you would have to set yourself. That reasoning is about `NODE_ENV`
+and nothing else: supply a name of your own — below says when that starts to
+matter — and it is an ordinary setting again, with the client key's
+trade-offs and the same build-time capture.
 
 Next does inline `process.env.NODE_ENV` into client code without any prefix,
 and that substitution is live in this build — the docblock in
@@ -425,9 +423,8 @@ build:
 hydration, so unlike the replay chunk below it is part of first load rather
 than something fetched later. The table below gives the weight of `/` on first
 load, measured in this example's own production build against the same build
-with that one file removed. The scripts are the ones the prerendered `/` loads:
-
-Run `next build` first — the paths below only exist after one.
+with that one file removed. The scripts are the ones the prerendered `/` loads,
+so run `next build` first — the paths below only exist after one:
 
 ```sh
 grep -o 'src="/_next/static/[^"]*\.js"' .next/server/app/index.html |
