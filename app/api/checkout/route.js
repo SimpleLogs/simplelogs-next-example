@@ -82,10 +82,11 @@ export async function POST() {
           // `@simplelogs/next/server`, the way this route reaches the package,
           // rather than through `@simplelogs/node` directly: the external
           // follows the IMPORTER (see `next.config.mjs`), so a bare specifier
-          // would resolve this app's own copy, which is the same one today but
-          // would stop being it the moment `@simplelogs/next` nests its own —
-          // the case that makes the version dated here go stale, and so the
-          // one case where a reassuring answer would be worthless:
+          // would resolve whatever sits at the app root, which is the same
+          // copy today but would stop being it the moment `@simplelogs/next`
+          // nests its own — the one case where a reassuring answer would be
+          // worthless. (`next.config.mjs` owns the rule for when the version
+          // below goes stale; nesting is not the only way.)
           //
           // node -e 'import("@simplelogs/next/server").then(m=>console.log(m.currentTraceIds()))'
           //

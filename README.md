@@ -72,13 +72,9 @@ starts one:
   inert — the trace still joins, and the server's own span is lost on a host
   that freezes at the response. Externalising leaves the import as a runtime
   one, and Turbopack resolves it from `@simplelogs/next` — the package that
-  actually imports it — so it resolves whether or not this app declares it.
-  ([`package.json`](package.json) does declare it, but that is neither what
-  makes it resolve nor a version pin: `^2.0.1` is a range and
-  `package-lock.json` does the pinning, transitively either way. It sets a
-  floor over the root copy, for as long as the root copy is the one that
-  loads.) `next.config.mjs` records the build the resolution was measured
-  on.
+  actually imports it — so it resolves whether or not this app declares it,
+  and this app does not. `next.config.mjs` records how that was measured, and
+  why the declaration it used to carry was dropped.
 
 The first three are what make the trace *join*; the fourth is what gets it
 *delivered*. See
@@ -445,8 +441,10 @@ separate responses pays. Gzipping the concatenated *contents* as a single
 member instead comes out smaller — 217,619 B against the table's 220,624,
 from the same selection piped into `xargs cat | gzip -9 -c | wc -c` — because
 one member can compress redundancy across files that separate members never
-see. `-n` is the
-flag that genuinely changes the number:
+see. That recipe drops `-n` because gzip reading stdin has no original
+filename to store, so the flag is a no-op there rather than a difference
+between the two numbers. On the per-file recipe it is the flag that genuinely
+changes the number:
 without it gzip writes each file's own name into the header, so the figure
 counts something that is not the content being measured — 146 B across the
 eight that make up the *Logging + browser tracing* row, each name plus the
@@ -706,9 +704,8 @@ output.
 
 `@simplelogs/next` re-exports `@simplelogs/browser`, `@simplelogs/node` and
 `@simplelogs/react` at the paths it has always published, so no *import* here
-has to change — every one of them goes through `@simplelogs/next`. (This
-example does declare `@simplelogs/node` in `package.json`, but not for an
-import: see [The integration](#the-integration).) If you
+has to change — every one of them goes through `@simplelogs/next`, and this
+example declares none of them separately. If you
 would rather depend on them directly, `@simplelogs/react`'s provider is the
 same component this example imports.
 

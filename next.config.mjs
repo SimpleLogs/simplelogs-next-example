@@ -30,28 +30,25 @@ export default {
   // That symlink follows the IMPORTER, not this app. Measured by installing a
   // second copy at `node_modules/@simplelogs/next/node_modules/@simplelogs/node`
   // and rebuilding: the alias retargeted onto the nested copy, hash and all.
-  // So `@simplelogs/next`'s own dependency is what makes the external resolve,
-  // hoisted layout or not, and the `package.json` range is not what puts the
-  // package within reach.
+  // So `@simplelogs/next`'s own dependency is what makes the external
+  // resolve, hoisted layout or not — which is why `package.json` does NOT
+  // declare `@simplelogs/node`, though it used to.
   //
-  // Nor is that range a pin. `^2.0.1` is `>=2.0.1 <3.0.0`, and
-  // `package-lock.json` is what fixes 2.0.1 — for the transitive copy too,
-  // so it would pin it whether or not this app declared it. What the
-  // declaration buys is a FLOOR over the ROOT copy: today the same `^2.0.1`
-  // `@simplelogs/next@2.0.1` itself declares, so it constrains nothing extra.
-  // And only while the root copy is the one that loads — should that package
-  // ever declare a range the root cannot satisfy, npm nests its own, the
-  // external follows it there (see below), and the running code is on
-  // whatever THAT package chose while this floor governs a copy nothing
-  // loads.
+  // Declaring it bought nothing: it did not make the external resolve, and
+  // `package-lock.json` fixes the transitive copy either way. In the one
+  // case where it would have acted at all it cost something — npm nests to
+  // resolve a conflict with a ROOT declaration, so had `@simplelogs/next`
+  // ever wanted a major this app's range refused, the declaration is what
+  // would strand a root copy nothing imports. Undeclared, that major is
+  // simply hoisted and there is one copy. Verified by removing it: same
+  // alias, same hash, same `e.y`, same byte figures.
   //
-  // So every `2.0.1` dated in this file and in `app/api/checkout/route.js`
-  // goes stale on any `@simplelogs/node` change, nested or not — and the
-  // likelier one by far is an ordinary update inside `^2.0.1`, which leaves
-  // no nested copy to find. Check the installed version after any bump
-  // (`npm ls @simplelogs/node`) rather than the checkout response:
-  // `otelStarted` reports a split module instance, and neither an in-range
-  // update nor — per the measurement above — a nested copy produces one.
+  // The versions dated in this file and in `app/api/checkout/route.js` go
+  // stale on any `@simplelogs/node` change. Check the installed version
+  // after a bump (`npm ls @simplelogs/node`) rather than the checkout
+  // response: `otelStarted` reports a split module instance, and per the
+  // measurement above the external follows the importer, so there is none to
+  // report.
   //
   // The same measurement retires the split-instance hazard this comment used
   // to warn about. It said a nested copy would leave the bundled code
