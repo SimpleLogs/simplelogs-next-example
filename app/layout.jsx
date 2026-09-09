@@ -32,8 +32,8 @@ export const metadata = { title: "SimpleLogs — Next.js example" };
  * would have to set. The question the key's paragraph answers — whether the
  * prefix is worth keeping — does not arise here at all.
  *
- * Next does inline `process.env.NODE_ENV` into client code with or without a
- * prefix, and that substitution is live in this build. It acts on
+ * Next does inline `process.env.NODE_ENV` into client code without any prefix,
+ * and that substitution is live in this build. It acts on
  * `@simplelogs/core@2.0.1`'s own default rather than on anything written here:
  * the only `NODE_ENV` read in this repo is the one below, and it is a server
  * read. The client bundle carries core's default already replaced, minified,
@@ -41,7 +41,7 @@ export const metadata = { title: "SimpleLogs — Next.js example" };
  * rename of `staticEnv`, which is allocated per build, and against a
  * production `next build` — `next dev` neither substitutes nor minifies:
  *
- * grep -oE 'environment:[A-Za-z_$]+\(\(\)=>"production"\)' .next/static/chunks/*.js
+ * grep -oE 'environment:[A-Za-z0-9_$]+\(\(\)=>"production"\)' .next/static/chunks/*.js
  *
  * The `?? "development"` tail follows it in the file.
  *

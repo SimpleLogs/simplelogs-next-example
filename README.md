@@ -49,8 +49,9 @@ import { SimpleLogsProvider } from "@simplelogs/next/provider";
 
 That hands the client config down through context, so `useSimpleLogs()` works
 anywhere below it. `environment` tags browser entries with the deployment's
-environment — `development` or `production` here — and needs no `NEXT_PUBLIC_`
-prefix, for reasons under [Keys](#keys). `serverLogger` in a route handler needs
+environment — `development` or `production` here — and takes no `NEXT_PUBLIC_`
+prefix, since `NODE_ENV` is the framework's name rather than one you set; see
+[Keys](#keys). `serverLogger` in a route handler needs
 nothing further — the server SDK reads `SIMPLELOGS_SERVER_KEY` from the
 environment at request time.
 
@@ -116,8 +117,8 @@ rather than one you chose, and `NEXT_PUBLIC_NODE_ENV` would be a different
 variable you would have to set yourself. The question the client key's
 paragraph answers — whether the prefix is worth keeping — does not arise here.
 
-Next does inline `process.env.NODE_ENV` into client code with or without a
-prefix, and that substitution is live in this build. It acts on
+Next does inline `process.env.NODE_ENV` into client code without any prefix,
+and that substitution is live in this build. It acts on
 `@simplelogs/core@2.0.1`'s own default rather than on anything this example
 writes: the one read of `process.env.NODE_ENV` in this repo is the layout's,
 and it is a server read, so the value reaches the browser as a prop on the
