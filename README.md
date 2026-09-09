@@ -419,11 +419,11 @@ with that one file removed, by summing the scripts the prerendered `/` loads
 and gzipping at level 9.
 
 These are not the figures `next build` used to print under **First Load JS**,
-and that column is gone as of Next 16 with Turbopack — which is why the figures
-this table used to carry could not be re-taken, and why there is nothing in the
-current build output left to compare these against. Compare the two rows with
-each other instead: same tree, same versions, same method, differing only by
-that one file — so their difference is not an artefact of any of those.
+and that column is gone as of Next 16 with Turbopack — so there is nothing in
+the current build output left to compare these against. Compare the two rows
+with each other instead: same tree, same versions, same method, differing only
+by that one file, so their difference is not an artefact of the tree, the
+versions or the method.
 
 | | Uncompressed | gzipped |
 |---|---|---|
@@ -653,10 +653,10 @@ config={{ clientKey, sessionReplay: { enabled: false } }}
 `enabled` is read at runtime, so no bundler can eliminate rrweb on it — the
 SDK imports it dynamically, and in this example's production build it lands in
 its own chunk of 215,294 B uncompressed — 65,995 B gzipped at level 9, as
-above — that is simply never fetched. That is one chunk's own size rather than
-a sum over what `/` loads, so it is not comparable with the table above even
-though both were taken from this branch's build. What the flag saves is the
-download, not the build output.
+above. Turn the flag off and that chunk is simply never fetched; it is still
+built. That is one chunk's own size rather than a sum over what `/` loads, so
+it is not comparable with the table above even though both were taken from
+this branch's build. What the flag saves is the download, not the build output.
 
 ## Using the split packages directly
 
