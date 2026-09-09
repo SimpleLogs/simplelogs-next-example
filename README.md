@@ -108,8 +108,8 @@ carries the prefix, which is the framework's own special case for that one
 name. And `app/layout.jsx` is a server component, so this value and
 `clientKey` alike reach the browser as props on the flight payload. Here it is
 the second, as with the key: the one read of `process.env.NODE_ENV` in this
-example is the layout's, and it does not sit in client code, so Next inlines it
-nowhere and the value crosses as a prop.
+example is the layout's, and it does not sit in client code, so nothing this
+example writes is inlined and the value crosses as a prop.
 
 Worth knowing before you copy it: `@simplelogs/core@2.0.1`'s own default for this
 setting is `process.env.NODE_ENV ?? "development"`, so passing it explicitly

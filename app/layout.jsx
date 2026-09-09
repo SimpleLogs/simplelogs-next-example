@@ -9,7 +9,8 @@ export const metadata = { title: "SimpleLogs — Next.js example" };
  * context, so `useSimpleLogs()` works anywhere below it.
  *
  * It deliberately does NOT carry the server key, and that key is never
- * prefixed — NEXT_PUBLIC_ would ship a secret to the browser. The server SDK
+ * prefixed — NEXT_PUBLIC_ would make it eligible for inlining into client
+ * code, one read away from being published. The server SDK
  * reads SIMPLELOGS_SERVER_KEY from the environment at request time, so
  * `serverLogger` in a route handler is configured whether or not this layout
  * renders — which matters, because `/` is statically prerendered and in
