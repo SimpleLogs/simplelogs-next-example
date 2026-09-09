@@ -426,8 +426,8 @@ the figures this table used to carry, but those came from a build this tree can
 no longer produce, so that gap is not attributable to anything — not to the
 method, not to the Next upgrade that removed the column, and not to the SDK.
 Compare the two rows with each other instead: they come from one build on one
-version measured one way, so their difference is the only figure here that
-survives the change of method.
+version measured one way, so their difference is the one figure here that does
+not depend on the superseded numbers at all.
 
 | | Uncompressed | gzipped |
 |---|---|---|
@@ -654,10 +654,11 @@ patch together:
 config={{ clientKey, sessionReplay: { enabled: false } }}
 ```
 
-`enabled` is read at runtime, so no bundler can eliminate rrweb on it — the SDK
-imports it dynamically, and in this example's production build it lands in its
-own chunk of 215,294 B uncompressed — 65,995 B gzipped at level 9, as above —
-that is simply never fetched. Measured the same way as the table above, so it
+`enabled` is read at runtime, so no bundler can eliminate rrweb on it — the
+SDK imports it dynamically, and in this example's production build it lands in
+its own chunk of 215,294 B uncompressed — 65,995 B gzipped at level 9, as
+above — that is simply never fetched. That is one chunk's own size rather than
+a sum over what `/` loads, taken from the same build as the table above, so it
 is not comparable with figures from earlier builds of this file. What the flag
 saves is the download, not the build output.
 
