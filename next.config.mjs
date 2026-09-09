@@ -34,13 +34,20 @@ export default {
   // hoisted layout or not, and the `package.json` range is not what puts the
   // package within reach.
   //
-  // What that range buys is a version pin — but only while the root copy is
-  // the one that loads. If `@simplelogs/next` ever nests its own, the
-  // external follows it there and the range stops describing what runs:
-  // every `2.0.1` dated in this file and in `app/api/checkout/route.js` would
-  // then be written against a copy nothing loads. So on a `@simplelogs/next`
-  // major, look for a nested `@simplelogs/node` rather than trusting the
-  // checkout response — see why below.
+  // Nor is that range a pin. `^2.0.1` is `>=2.0.1 <3.0.0`, and
+  // `package-lock.json` is what fixes 2.0.1 — for the transitive copy too,
+  // so it would pin it whether or not this app declared it. What the
+  // declaration buys is a FLOOR this app controls: today the same `^2.0.1`
+  // `@simplelogs/next@2.0.1` itself declares, so it constrains nothing
+  // extra, but the lower bound stops depending on what that package chooses.
+  //
+  // So every `2.0.1` dated in this file and in `app/api/checkout/route.js`
+  // goes stale on any `@simplelogs/node` change, nested or not — and the
+  // likelier one by far is an ordinary update inside `^2.0.1`, which leaves
+  // no nested copy to find. Check the installed version after any bump
+  // (`npm ls @simplelogs/node`) rather than the checkout response:
+  // `otelStarted` reports a split module instance, and neither an in-range
+  // update nor — per the measurement above — a nested copy produces one.
   //
   // The same measurement retires the split-instance hazard this comment used
   // to warn about. It said a nested copy would leave the bundled code

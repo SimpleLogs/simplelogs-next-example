@@ -74,9 +74,10 @@ starts one:
   span is lost on a host that freezes at the response. Externalising leaves
   the import as a runtime one, and Turbopack resolves it from
   `@simplelogs/next` — the package that actually imports it — so it resolves
-  whether or not this app declares it. The declaration pins the version
-  `next.config.mjs` is written against; that file records the build the
-  resolution was measured on.
+  whether or not this app declares it. Nor does the declaration pin a
+  version — `^2.0.1` is a range and `package-lock.json` is what pins it,
+  transitively either way. What it sets is a floor this app controls;
+  `next.config.mjs` records the build the resolution was measured on.
 
 The first three are what make the trace *join*; the fourth is what gets it
 *delivered*. See
@@ -439,10 +440,7 @@ figure — and into `xargs gzip -9 -n -c | wc -c` for **gzipped**.
 The per-file accounting is `gzip -c`'s own doing: handed several files it
 writes a sequence of independently compressed members, so the total is the
 sum of their individual sizes. That is what a browser fetching the scripts as
-separate responses pays. (An earlier version of this recipe passed `-n1` and
-credited it with that. It buys nothing here — checked on this chunk set, the
-stream is byte-identical at 220,624 B with or without it.)
-Gzipping the concatenated *contents* as a single member instead comes out
+separate responses pays. Gzipping the concatenated *contents* as a single member instead comes out
 smaller — 217,619 B against the table's 220,624 — because one member can
 compress redundancy across files that separate members never see. `-n` is the
 flag that genuinely changes the number:
@@ -706,8 +704,9 @@ output.
 `@simplelogs/next` re-exports `@simplelogs/browser`, `@simplelogs/node` and
 `@simplelogs/react` at the paths it has always published, so no *import* here
 has to change — every one of them goes through `@simplelogs/next`. (This
-example does declare `@simplelogs/node` in `package.json`, but to pin the
-version rather than for an import: see [The integration](#the-integration).) If you
+example does declare `@simplelogs/node` in `package.json`, but to set a
+version floor rather than for an import: see
+[The integration](#the-integration).) If you
 would rather depend on them directly, `@simplelogs/react`'s provider is the
 same component this example imports.
 

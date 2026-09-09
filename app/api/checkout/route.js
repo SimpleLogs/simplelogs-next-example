@@ -69,10 +69,11 @@ export async function POST() {
           // `dist/server.mjs` re-exports it from `@simplelogs/node` — and
           // `serverExternalPackages` in `next.config.mjs` hands that bundled
           // import to Turbopack's `externalImport`, which is `await
-          // import(id)`, NOT a `require`. Which file that lands on is
-          // `@simplelogs/node`'s own exports map rather than a consequence of
-          // the import: 2.0.1 maps the `import` condition to
-          // `dist/index.mjs` and `require` to `dist/index.js`. So this route
+          // import(id)`, NOT a `require`. The import alone does not decide
+          // which file that lands on — `@simplelogs/node`'s exports map names
+          // one per condition, and 2.0.1 maps the `import` condition to
+          // `dist/index.mjs` and `require` to `dist/index.js`, so it takes
+          // both. So this route
           // reaches
           // `@simplelogs/node/dist/index.mjs`, the ESM build, and so does
           // `instrumentation.js`'s `await import("@simplelogs/next/server")`,
