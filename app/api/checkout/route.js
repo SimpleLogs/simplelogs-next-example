@@ -66,16 +66,22 @@ export async function POST() {
           //
           // node -e 'import("@simplelogs/next/server").then(m=>console.log(m.currentTraceIds()))'
           //
-          // It prints `{}`. That probe runs under Node's own conditions rather
-          // than Next's server graph, which also has `react-server` — but
-          // `@simplelogs/next`'s exports map has no `react-server` branch for
-          // `./server`, only `import` and `require`, so both resolve
-          // `dist/server.mjs` and the probe loads the file this route gets.
-          // The checkout probe cannot answer this at all: it runs with a span
-          // active, so it exercises the populated return. The line this replaced spread
-          // the call directly, which tolerated `undefined`; a property read does
-          // not, and a 500 here would replace the diagnosis with a bare
-          // "failed" — the one outcome this code exists to prevent.
+          // It prints `{}`. That one-liner runs under Node's own conditions
+          // (`node`, `import`); this file is compiled into Next's server
+          // graph, which offers `react-server` first. `./server` carries no
+          // `react-server` branch, so the graph falls through to `import` —
+          // the condition an `import()` takes anyway — and the one-liner and
+          // this route therefore load the same file, `dist/server.mjs`. The
+          // map's other branch, `require`, resolves `dist/server.js`, and
+          // nothing here takes it. `node --conditions react-server` on the
+          // same one-liner also prints `{}`.
+          //
+          // A POST to this route cannot answer the question at all: it runs
+          // with a span active, so it exercises the populated return. The
+          // line this replaced spread the call directly, which tolerated
+          // `undefined`; a property read does not, and a 500 here would
+          // replace the diagnosis with a bare "failed" — the one outcome this
+          // code exists to prevent.
           const ids = currentTraceIds() ?? {};
           const joined = Boolean(inboundTraceId) && ids.traceId === inboundTraceId;
 
