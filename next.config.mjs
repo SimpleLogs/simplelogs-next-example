@@ -31,31 +31,23 @@ export default {
   // second copy at `node_modules/@simplelogs/next/node_modules/@simplelogs/node`
   // and rebuilding: the alias retargeted onto the nested copy, hash and all.
   // So `@simplelogs/next`'s own dependency is what makes the external
-  // resolve, hoisted layout or not — which is why `package.json` does NOT
-  // declare `@simplelogs/node`, though it used to.
+  // resolve, hoisted layout or not — which is why `package.json` does not
+  // declare `@simplelogs/node`.
   //
-  // Declaring it bought nothing: it did not make the external resolve, and
+  // Do not add it back. It would not make the external resolve, and
   // `package-lock.json` fixes the transitive copy either way. In the one
-  // case where it would have acted at all it cost something — npm nests to
-  // resolve a conflict with a ROOT declaration, so had `@simplelogs/next`
-  // ever wanted a major this app's range refused, the declaration is what
-  // would strand a root copy nothing imports. Undeclared, that major is
-  // simply hoisted and there is one copy. Verified by removing it: same
-  // alias, same hash, same `e.y`, same byte figures.
+  // case where it would act at all it costs something — npm nests to resolve
+  // a conflict with a ROOT declaration, so should `@simplelogs/next` ever
+  // want a major this app's range refused, the declaration is what strands a
+  // root copy nothing imports. Undeclared, that major is simply hoisted and
+  // there is one copy.
   //
   // The versions dated in this file and in `app/api/checkout/route.js` go
   // stale on any `@simplelogs/node` change. Check the installed version
   // after a bump (`npm ls @simplelogs/node`) rather than the checkout
-  // response: `otelStarted` reports a split module instance, and per the
-  // measurement above the external follows the importer, so there is none to
-  // report.
-  //
-  // The same measurement retires the split-instance hazard this comment used
-  // to warn about. It said a nested copy would leave the bundled code
-  // importing the nested one while this resolved the root one — separate
-  // module instances again. The nested build IS that scenario, and the
-  // external followed the importer into the nest, so both halves stay on ONE
-  // instance. Which is also why `otelStarted` cannot be the tripwire for the
-  // paragraph above: there is no split for it to report.
+  // response: a bump produces no split for `otelStarted` to report, because
+  // the external follows the importer either way. A MISSING
+  // `serverExternalPackages` entry still splits the instance, and that is
+  // the case `otelStarted` exists to catch.
   serverExternalPackages: ["@simplelogs/node"],
 };

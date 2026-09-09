@@ -73,8 +73,7 @@ starts one:
   that freezes at the response. Externalising leaves the import as a runtime
   one, and Turbopack resolves it from `@simplelogs/next` — the package that
   actually imports it — so it resolves whether or not this app declares it,
-  and this app does not. `next.config.mjs` records how that was measured, and
-  why the declaration it used to carry was dropped.
+  and this app does not. `next.config.mjs` records how that was measured.
 
 The first three are what make the trace *join*; the fourth is what gets it
 *delivered*. See
