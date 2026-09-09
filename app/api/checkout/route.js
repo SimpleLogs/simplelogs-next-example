@@ -61,20 +61,25 @@ export async function POST() {
           // entry going missing leaves `joined` TRUE, which is exactly what
           // `otelStarted` below exists to answer.
           // `?? {}` is belt-and-braces: 2.0.1's `currentTraceIds()` already
-          // returns `{}` when nothing is active. Checked against the installed
-          // dist, through the specifier this file imports, with:
+          // returns `{}` when nothing is active.
           //
-          // node -e 'import("@simplelogs/next/server").then(m=>console.log(m.currentTraceIds()))'
+          // Which build that is checked against is not obvious, and the
+          // specifier this file imports does not settle it.
+          // `@simplelogs/next` does not implement `currentTraceIds` —
+          // `dist/server.mjs` re-exports it from `@simplelogs/node` — and
+          // `serverExternalPackages` (`next.config.mjs:39`) turns that
+          // bundled import into a runtime `require`. So this route reaches
+          // `@simplelogs/node/dist/index.js`, the CJS build, where an
+          // `import()` reaches `index.mjs`. Separate outputs, and "returns
+          // `{}`" is a per-build fact, so both were run against the installed
+          // dist:
           //
-          // It prints `{}`. That one-liner runs under Node's own conditions
-          // (`node`, `import`); this file is compiled into Next's server
-          // graph, which offers `react-server` first. `./server` carries no
-          // `react-server` branch, so the graph falls through to `import` —
-          // the condition an `import()` takes anyway — and the one-liner and
-          // this route therefore load the same file, `dist/server.mjs`. The
-          // map's other branch, `require`, resolves `dist/server.js`, and
-          // nothing here takes it. `node --conditions react-server` on the
-          // same one-liner also prints `{}`.
+          // node -e 'console.log(require("@simplelogs/node").currentTraceIds())'
+          // node -e 'import("@simplelogs/node").then(m=>console.log(m.currentTraceIds()))'
+          //
+          // Both print `{}`. The first is the build this route's copy comes
+          // from; the second is recorded because it is the one an earlier
+          // reading of this comment mistook for it.
           //
           // A POST to this route cannot answer the question at all: it runs
           // with a span active, so it exercises the populated return. The

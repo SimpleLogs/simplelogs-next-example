@@ -118,7 +118,9 @@ variable you would have to set yourself. The question the client key's
 paragraph answers — whether the prefix is worth keeping — does not arise here.
 
 Next does inline `process.env.NODE_ENV` into client code without any prefix,
-and that substitution is live in this build. It acts on
+and that substitution is live in this build — the docblock in
+[`app/layout.jsx`](app/layout.jsx) gives the `grep` that finds it in the chunk
+that carries the SDK. It acts on
 `@simplelogs/core@2.0.1`'s own default rather than on anything this example
 writes: the one read of `process.env.NODE_ENV` in this repo is the layout's,
 and it is a server read, so the value reaches the browser as a prop on the
