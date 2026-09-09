@@ -26,22 +26,22 @@ export const metadata = { title: "SimpleLogs — Next.js example" };
  *
  * The other half of the same config object is `environment`, which tags
  * browser entries with the deployment's environment — `development` or
- * `production` here. It needs no prefix, and the reason is specific to the
- * NAME rather than to this file: `NODE_ENV` is Next's own, inlined into client
- * code whether or not it carries the prefix, so there is nothing a prefix
- * could buy it. The flight payload carries it too — but it carries `clientKey`
- * above just the same, which keeps its prefix, so that route is not what
- * separates the two.
+ * `production` here. It carries no prefix because prefixing it is not an
+ * option: `NODE_ENV` is the framework's name rather than one this project
+ * chose, and `NEXT_PUBLIC_NODE_ENV` would be a different variable someone
+ * would have to set. The question the key's paragraph answers — whether the
+ * prefix is worth keeping — does not arise here at all.
  *
- * Next's substitution is live in this build without acting on anything written
- * here: the only `NODE_ENV` read in this repo is the one below, and it is a
- * server read. It lands on `@simplelogs/core`'s own default instead, which the
- * client bundle carries already replaced, minified, in the chunk that carries
- * the SDK. Quoted as a stem rather than whole, because the full expression
- * does not fit a comment line and a wrap through it defeats the search it is
- * offered for:
+ * Next does inline `process.env.NODE_ENV` into client code with or without a
+ * prefix, and that substitution is live in this build. It acts on
+ * `@simplelogs/core@2.0.1`'s own default rather than on anything written here:
+ * the only `NODE_ENV` read in this repo is the one below, and it is a server
+ * read. The client bundle carries core's default already replaced, minified,
+ * in the chunk that carries the SDK. Match it without pinning the minifier's
+ * rename of `staticEnv`, which is allocated per build, and against a
+ * production `next build` — `next dev` neither substitutes nor minifies:
  *
- * grep -o 'environment:ev(()=>"production")' .next/static/chunks/*.js
+ * grep -oE 'environment:[A-Za-z_$]+\(\(\)=>"production"\)' .next/static/chunks/*.js
  *
  * The `?? "development"` tail follows it in the file.
  *

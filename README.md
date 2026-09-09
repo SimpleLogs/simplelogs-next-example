@@ -110,19 +110,18 @@ keeping for the reasons below.
 **`environment` is a third setting, and it is not a SimpleLogs env var.**
 `app/layout.jsx` passes `environment: process.env.NODE_ENV` to the provider, so
 browser entries from this example are tagged `development` or `production` and
-the environment picker separates them. It needs no `NEXT_PUBLIC_` prefix, and
-the reason is about the name rather than about this file: Next inlines
-`process.env.NODE_ENV` into client code whether or not it carries the prefix —
-the framework's own special case for that one name — so there is nothing a
-prefix could buy it.
+the environment picker separates them. It carries no `NEXT_PUBLIC_` prefix
+because prefixing it is not an option: `NODE_ENV` is the framework's name
+rather than one you chose, and `NEXT_PUBLIC_NODE_ENV` would be a different
+variable you would have to set yourself. The question the client key's
+paragraph answers — whether the prefix is worth keeping — does not arise here.
 
-The flight payload carries it too, since `app/layout.jsx` is a server
-component. That is how the value travels, not why it skips the prefix:
-`clientKey` takes the same route and keeps its prefix, so a property they share
-cannot be what separates them. What Next's substitution acts on here is
-`@simplelogs/core`'s own default rather than anything this example writes — the
-one read of `process.env.NODE_ENV` in this repo is the layout's, and it is a
-server read.
+Next does inline `process.env.NODE_ENV` into client code with or without a
+prefix, and that substitution is live in this build. It acts on
+`@simplelogs/core@2.0.1`'s own default rather than on anything this example
+writes: the one read of `process.env.NODE_ENV` in this repo is the layout's,
+and it is a server read, so the value reaches the browser as a prop on the
+flight payload — the same route `clientKey` takes.
 
 Worth knowing before you copy it: `@simplelogs/core@2.0.1`'s own default for this
 setting is `process.env.NODE_ENV ?? "development"`, so passing it explicitly
