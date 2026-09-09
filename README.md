@@ -426,9 +426,11 @@ grep -o 'src="/_next/static/[^"]*\.js"' .next/server/app/index.html |
 Sum their byte sizes for the first column, and sum `gzip -9 -n -c <file> | wc -c`
 over the same files for the second. `-n` is load-bearing: without it gzip writes
 each file's own name into the header, so the figure counts something that is not
-the content being measured — 146 B across these eight, each name plus the byte
-gzip terminates it with. It is not a fixed cost per file: seven of these names
-are 16 characters and one is 26.
+the content being measured — 146 B across the eight that make up the
+*Logging + browser tracing* row, each name plus the byte gzip terminates it
+with. It is not a fixed cost per file: gzip stores the base name, and seven of
+those are 16 characters while one is 26. The other row is a different build, so
+neither the file count nor the total carries over to it.
 
 These are not the figures `next build` used to print under **First Load JS**,
 and that column is gone as of Next 16 with Turbopack — so there is nothing in

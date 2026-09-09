@@ -62,7 +62,8 @@ export async function POST() {
           // `otelStarted` below exists to answer.
           // `?? {}` is belt-and-braces: 2.0.1's `currentTraceIds()` already
           // returns `{}` when nothing is active — checked against the installed
-          // dist with `node -e 'import("@simplelogs/node").then(m =>
+          // dist through the same specifier this file imports, with
+          // `node -e 'import("@simplelogs/next/server").then(m =>
           // console.log(m.currentTraceIds()))'`, which prints `{}`. The
           // checkout probe cannot answer this: it runs with a span active, so
           // it exercises the populated return. The line this replaced spread
