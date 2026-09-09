@@ -93,14 +93,21 @@ why this example does not pass it to the provider at all.
 the only way a value gets there. That is fine — the key is public by design and
 origin-locked in the dashboard.
 
-**`environment` is a third setting, and it is not an env var.** `app/layout.jsx`
-passes `environment: process.env.NODE_ENV` to the provider, so browser entries
-from this example are tagged `development` or `production` and the
-[environment picker](https://simplelogs.io) separates them. It reaches the
-hooks below the provider from `@simplelogs/next@2.0.1` onward; before that the
-provider applied its config from an effect, which React flushes child-first, so
-every hook underneath had already run on the defaults and browser entries
-carried no environment at all.
+**`environment` is a third setting, and it is not a SimpleLogs env var.**
+`app/layout.jsx` passes `environment: process.env.NODE_ENV` to the provider, so
+browser entries from this example are tagged `development` or `production` and
+the environment picker separates them. It needs no `NEXT_PUBLIC_` prefix for
+two reasons, both of which are exceptions to the rule above rather than
+counterexamples to it: Next inlines `process.env.NODE_ENV` into the client
+bundle whatever it is called, and `app/layout.jsx` is a server component, so
+this value and `clientKey` both cross to the browser as props on the flight
+payload rather than through the bundle at all.
+
+Worth knowing before you copy it: `@simplelogs/core`'s own default for this
+setting is `process.env.NODE_ENV ?? "development"`, so passing it explicitly
+matches what the SDK would have chosen. It is here to say the deployment's
+environment is a deliberate choice, not to change the tag. A value that differs
+from the default — a name of your own — is where passing it starts to matter.
 
 Be precise about what the prefix does and does not buy:
 
@@ -391,12 +398,15 @@ build:
 
 `instrumentation-client.js` imports the web tracer statically and runs before
 hydration, so unlike the replay chunk below it is part of first load rather
-than something fetched later. The weight of `/` on first load, measured in
-this example's own production build against the same build with that one file
-removed — summing the scripts the prerendered `/` loads, gzipped at level 9.
-That is not the figure `next build` prints under **First Load JS**: it counts a
-wider set of scripts, so compare the two rows with each other rather than with
-the build output.
+than something fetched later. The table below gives the weight of `/` on first
+load, measured in this example's own production build against the same build
+with that one file removed, by summing the scripts the prerendered `/` loads
+and gzipping at level 9.
+
+These are not the figures `next build` prints under **First Load JS**: this sum
+counts a wider set of scripts than that column does, which is why both rows sit
+about 117 KB above the figures this table used to carry. Compare the two rows
+with each other, not with the build output.
 
 | | Uncompressed | gzipped |
 |---|---|---|
