@@ -106,9 +106,9 @@ lists. Next inlines `process.env.NODE_ENV` into client code whether or not it
 carries the prefix, which is the framework's own special case for that one
 name. And `app/layout.jsx` is a server component, so this value and
 `clientKey` alike reach the browser as props on the flight payload. Here it is
-the second, as with the key: neither read of `process.env.NODE_ENV` in this
-example — the layout's, and one in `app/api/checkout/route.js` — sits in client
-code, so Next inlines it nowhere and the value crosses as a prop.
+the second, as with the key: the one read of `process.env.NODE_ENV` in this
+example is the layout's, and it does not sit in client code, so Next inlines it
+nowhere and the value crosses as a prop.
 
 Worth knowing before you copy it: `@simplelogs/core@2.0.1`'s own default for this
 setting is `process.env.NODE_ENV ?? "development"`, so passing it explicitly
@@ -118,10 +118,10 @@ from the default — a name of your own — is where passing it starts to matter
 
 Be precise about what the prefix does and does not buy:
 
-- It does **not** protect you from a missing build-time value. A `NEXT_PUBLIC_`
-  variable absent at build is `undefined` in the bundle forever — exactly what
-  an unprefixed variable read from a prerendered layout would be. Both fail the
-  same way.
+- It does **not** protect you from a missing build-time value. Absent at build,
+  a `NEXT_PUBLIC_` variable is `undefined` forever in whatever captured it, the
+  bundle or a prerendered payload — exactly what an unprefixed variable read
+  from a prerendered layout would be. Both fail the same way.
 - It **does** make the build-time capture explicit. The name says "this is
   baked in", instead of it being an emergent property of whether this route
   happened to prerender. `next build` prints which: `/` is `○ Static` here, so
