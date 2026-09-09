@@ -71,10 +71,12 @@ starts one:
   package alongside `@simplelogs/next`. Without the config entry `initOtel()`
   and `flushServer()` land in separate module instances, and the flush before
   the response is silently inert — the trace still joins, and the server's own
-  span is lost on a host that freezes at the response. The declaration is what
-  makes the entry resolve: externalising leaves the import as a runtime one
-  pointed at this app's own `node_modules`, and an undeclared transitive is
-  only findable there under a hoisted layout.
+  span is lost on a host that freezes at the response. Externalising leaves
+  the import as a runtime one, and Turbopack resolves it from
+  `@simplelogs/next` — the package that actually imports it — so it resolves
+  whether or not this app declares it. The declaration pins the version
+  `next.config.mjs` is written against; that file records the build the
+  resolution was measured on.
 
 The first three are what make the trace *join*; the fourth is what gets it
 *delivered*. See
@@ -432,19 +434,25 @@ grep -o 'src="/_next/static/[^"]*\.js"' .next/server/app/index.html |
 ```
 
 Pipe that into `xargs wc -c` for **Uncompressed** — the `total` line is the
-figure — and into `xargs -n1 gzip -9 -n -c | wc -c` for **gzipped**. That
-gives the *Logging + browser tracing* row; delete `instrumentation-client.js`,
-`next build` again and re-run it for the other, then
-`git checkout instrumentation-client.js` and rebuild to put the browser half
-back. The gzipped figure is exact
-because `gzip -c` writes one complete member per input, so the concatenated
-stream weighs the sum of the individual sizes. `-n` is load-bearing: without
-it gzip writes each file's own name into the header, so the figure counts
-something that is not the content being measured — 146 B across the eight that
-make up the *Logging + browser tracing* row, each name plus the byte gzip
-terminates it with. It is not a fixed cost per file: gzip stores the base
-name, and seven of those are 16 characters while one is 26. The other row is a
-different build, so neither the file count nor the total carries over to it.
+figure — and into `xargs -n1 gzip -9 -n -c | wc -c` for **gzipped**.
+
+`-n1` is part of the measurement rather than a shell detail: it compresses
+each script on its own and sums the members, which is what a browser fetching
+them as separate responses pays. Gzipping the concatenated *contents* as a
+single member instead comes out smaller — 217,619 B against the table's
+220,624 — because one member can compress redundancy across files that
+separate members never see. `-n` is load-bearing for a different reason:
+without it gzip writes each file's own name into the header, so the figure
+counts something that is not the content being measured — 146 B across the
+eight that make up the *Logging + browser tracing* row, each name plus the
+byte gzip terminates it with. It is not a fixed cost per file: gzip stores the
+base name, and seven of those are 16 characters while one is 26.
+
+That gives the *Logging + browser tracing* row; delete
+`instrumentation-client.js`, `next build` again and re-run it for the other,
+then `git checkout instrumentation-client.js` and rebuild to put the browser
+half back. The other row is a different build, so neither the file count nor
+the total carries over to it.
 
 These are not the figures `next build` used to print under **First Load JS**,
 and that column is gone as of Next 16, whichever bundler — so there is nothing in

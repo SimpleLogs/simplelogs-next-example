@@ -31,7 +31,7 @@ export const metadata = { title: "SimpleLogs — Next.js example" };
  * chose, and `NEXT_PUBLIC_NODE_ENV` would be a different variable someone
  * would have to set. That reasoning is about `NODE_ENV` and nothing else: a
  * name of this project's own would be an ordinary setting again, with the
- * key's trade-offs and the same build-time capture.
+ * client key's trade-offs and the same build-time capture.
  *
  * Next does inline `process.env.NODE_ENV` into client code without any prefix,
  * and that substitution is live in this build. It acts on
