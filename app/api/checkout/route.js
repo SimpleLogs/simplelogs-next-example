@@ -60,7 +60,7 @@ export async function POST() {
           // is a separate question this cannot see — the `serverExternalPackages`
           // entry going missing leaves `joined` TRUE, which is exactly what
           // `otelStarted` below exists to answer.
-          // `?? {}` is belt-and-braces: the SDK's `currentTraceIds()` already
+          // `?? {}` is belt-and-braces: 2.0.1's `currentTraceIds()` already
           // returns `{}` when nothing is active. The line this replaced spread
           // the call directly, which tolerated `undefined`; a property read does
           // not, and a 500 here would replace the diagnosis with a bare

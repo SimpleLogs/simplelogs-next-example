@@ -93,6 +93,15 @@ why this example does not pass it to the provider at all.
 the only way a value gets there. That is fine — the key is public by design and
 origin-locked in the dashboard.
 
+**`environment` is a third setting, and it is not an env var.** `app/layout.jsx`
+passes `environment: process.env.NODE_ENV` to the provider, so browser entries
+from this example are tagged `development` or `production` and the
+[environment picker](https://simplelogs.io) separates them. It reaches the
+hooks below the provider from `@simplelogs/next@2.0.1` onward; before that the
+provider applied its config from an effect, which React flushes child-first, so
+every hook underneath had already run on the defaults and browser entries
+carried no environment at all.
+
 Be precise about what the prefix does and does not buy:
 
 - It does **not** protect you from a missing build-time value. A `NEXT_PUBLIC_`
@@ -382,9 +391,12 @@ build:
 
 `instrumentation-client.js` imports the web tracer statically and runs before
 hydration, so unlike the replay chunk below it is part of first load rather
-than something fetched later. First Load JS for `/`, measured in this example's
-own production build against the same build with that one file removed —
-summing the scripts the prerendered `/` loads, gzipped at level 9:
+than something fetched later. The weight of `/` on first load, measured in
+this example's own production build against the same build with that one file
+removed — summing the scripts the prerendered `/` loads, gzipped at level 9.
+That is not the figure `next build` prints under **First Load JS**: it counts a
+wider set of scripts, so compare the two rows with each other rather than with
+the build output.
 
 | | Uncompressed | gzipped |
 |---|---|---|
