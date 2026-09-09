@@ -421,9 +421,9 @@ and gzipping at level 9.
 These are not the figures `next build` used to print under **First Load JS**,
 and that column is gone as of Next 16 with Turbopack — so there is nothing in
 the current build output left to compare these against. Compare the two rows
-with each other instead: same tree, same versions, same method, differing only
-by that one file, so their difference is not an artefact of the tree, the
-versions or the method.
+with each other instead: same versions, same method, and the only difference
+between the two builds is that one file — so their difference is not an
+artefact of the versions or the method.
 
 | | Uncompressed | gzipped |
 |---|---|---|
