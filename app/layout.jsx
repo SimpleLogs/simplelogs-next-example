@@ -36,8 +36,14 @@ export const metadata = { title: "SimpleLogs — Next.js example" };
  * Next's substitution is live in this build without acting on anything written
  * here: the only `NODE_ENV` read in this repo is the one below, and it is a
  * server read. It lands on `@simplelogs/core`'s own default instead, which the
- * client bundle carries already replaced — `environment:ev(()=>"production")??
- * "development"`, minified, in the chunk that carries the SDK.
+ * client bundle carries already replaced, minified, in the chunk that carries
+ * the SDK. Quoted as a stem rather than whole, because the full expression
+ * does not fit a comment line and a wrap through it defeats the search it is
+ * offered for:
+ *
+ * grep -o 'environment:ev(()=>"production")' .next/static/chunks/*.js
+ *
+ * The `?? "development"` tail follows it in the file.
  *
  * The prefix does NOT protect against a missing build-time value — absent at
  * build, the key is `undefined` forever in whatever captured it, the bundle or
