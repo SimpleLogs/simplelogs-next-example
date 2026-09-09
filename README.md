@@ -426,8 +426,8 @@ grep -o 'src="/_next/static/[^"]*\.js"' .next/server/app/index.html |
 Sum their byte sizes for the first column, and sum `gzip -9 -n -c <file> | wc -c`
 over the same files for the second. `-n` is load-bearing: without it gzip writes
 each file's own name into the header, so the figure counts something that is not
-the content being measured — 17 B on the replay chunk below, which is the length
-of its name.
+the content being measured — 17 B on the replay chunk below, which is its
+16-character name plus the NUL byte gzip terminates it with.
 
 These are not the figures `next build` used to print under **First Load JS**,
 and that column is gone as of Next 16 with Turbopack — so there is nothing in
