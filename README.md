@@ -89,21 +89,25 @@ browser bundle, so prefixing it publishes the secret. It does not need the
 prefix: the server SDK reads it from the environment at request time, which is
 why this example does not pass it to the provider at all.
 
-**Do prefix the client key.** It has to reach the browser, and the bundle is
-the only way a value gets there. That is fine — the key is public by design and
-origin-locked in the dashboard.
+**Do prefix the client key.** It has to reach the browser, and there are two
+ways it can: inlined into client code, which is what the `NEXT_PUBLIC_` prefix
+buys, or serialized into a server component's prerendered payload and handed
+down as a prop — which is the route it actually takes here, since
+`app/layout.jsx` is a server component. Either way it is fine: the key is
+public by design and origin-locked in the dashboard, and the prefix is worth
+keeping for the reasons below.
 
 **`environment` is a third setting, and it is not a SimpleLogs env var.**
 `app/layout.jsx` passes `environment: process.env.NODE_ENV` to the provider, so
 browser entries from this example are tagged `development` or `production` and
-the environment picker separates them. It needs no `NEXT_PUBLIC_` prefix for
-two reasons, both of which are exceptions to the rule above rather than
-counterexamples to it: Next inlines `process.env.NODE_ENV` into the client
-bundle whatever it is called, and `app/layout.jsx` is a server component, so
-this value and `clientKey` both cross to the browser as props on the flight
-payload rather than through the bundle at all.
+the environment picker separates them. It needs no `NEXT_PUBLIC_` prefix, for two
+reasons the rule above already allows: Next inlines `process.env.NODE_ENV` into
+client code whether or not it carries the prefix — the framework's own
+special case for that one name — and `app/layout.jsx` is a server component, so
+this value and `clientKey` alike reach the browser as props on the flight
+payload.
 
-Worth knowing before you copy it: `@simplelogs/core`'s own default for this
+Worth knowing before you copy it: `@simplelogs/core@2.0.1`'s own default for this
 setting is `process.env.NODE_ENV ?? "development"`, so passing it explicitly
 matches what the SDK would have chosen. It is here to say the deployment's
 environment is a deliberate choice, not to change the tag. A value that differs
@@ -404,9 +408,11 @@ with that one file removed, by summing the scripts the prerendered `/` loads
 and gzipping at level 9.
 
 These are not the figures `next build` prints under **First Load JS**: this sum
-counts a wider set of scripts than that column does, which is why both rows sit
-about 117 KB above the figures this table used to carry. Compare the two rows
-with each other, not with the build output.
+counts a wider set of scripts than that column does. Both rows sit a constant
+117,168 B above the figures this table used to carry, which points at the
+method rather than at the SDK — though the old figures came from a `next build`
+that no longer prints them, so that cannot be re-run here to prove it. Compare
+the two rows with each other, not with the build output.
 
 | | Uncompressed | gzipped |
 |---|---|---|
