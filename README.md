@@ -419,15 +419,11 @@ with that one file removed, by summing the scripts the prerendered `/` loads
 and gzipping at level 9.
 
 These are not the figures `next build` used to print under **First Load JS**,
-and that column is gone as of Next 16 with Turbopack — which is why the old
-numbers could not be re-taken, and why there is nothing in the current build
-output left to compare these against. Both rows sit a constant 117,168 B above
-the figures this table used to carry, but those came from a build this tree can
-no longer produce, so that gap is not attributable to anything — not to the
-method, not to the Next upgrade that removed the column, and not to the SDK.
-Compare the two rows with each other instead: they come from one build on one
-version measured one way, so their difference is the one figure here that does
-not depend on the superseded numbers at all.
+and that column is gone as of Next 16 with Turbopack — which is why the figures
+this table used to carry could not be re-taken, and why there is nothing in the
+current build output left to compare these against. Compare the two rows with
+each other instead: they come from one build on one version measured one way,
+so their difference is not an artefact of any of the three.
 
 | | Uncompressed | gzipped |
 |---|---|---|
@@ -658,9 +654,9 @@ config={{ clientKey, sessionReplay: { enabled: false } }}
 SDK imports it dynamically, and in this example's production build it lands in
 its own chunk of 215,294 B uncompressed — 65,995 B gzipped at level 9, as
 above — that is simply never fetched. That is one chunk's own size rather than
-a sum over what `/` loads, taken from the same build as the table above, so it
-is not comparable with figures from earlier builds of this file. What the flag
-saves is the download, not the build output.
+a sum over what `/` loads, so it is not comparable with the table above even
+though both come from the same build. What the flag saves is the download, not
+the build output.
 
 ## Using the split packages directly
 
