@@ -422,11 +422,12 @@ and that column is gone as of Next 16 with Turbopack — which is why the old
 numbers could not be re-taken, and why there is nothing in the current build
 output left to compare these against. This sum appears to count a wider set of
 scripts than that column did: both rows sit a constant 117,168 B above the
-figures this table used to carry. That rules out the SDK — a per-package delta
-would not land identically on both rows — but not between the method and the
-Next upgrade that removed the column, since a framework change shifts the
-shared script set the same way, and neither can be re-run here to tell them
-apart. Compare the two rows with each other.
+figures this table used to carry. That is far too large to be the SDK — the
+only SDK growth measured on this bump is the 1,661 B on the replay chunk below
+— but it does not decide between the method and the Next upgrade that removed
+the column, since either shifts the shared script set by a constant, and
+neither old build can be re-run here to tell them apart. Compare the two rows
+with each other.
 
 | | Uncompressed | gzipped |
 |---|---|---|
@@ -655,8 +656,10 @@ config={{ clientKey, sessionReplay: { enabled: false } }}
 
 `enabled` is read at runtime, so no bundler can eliminate rrweb on it — the SDK
 imports it dynamically, and in this example's production build it lands in its
-own chunk of 215,294 B uncompressed — 65,995 B gzipped — that is simply never
-fetched. What the flag saves is the download, not the build output.
+own chunk of 215,294 B uncompressed — 65,995 B gzipped at level 9, as above —
+that is simply never fetched. Taking 2.0.1 grew it by 1,661 B, which is the
+only SDK size change measured anywhere in this build. What the flag saves is
+the download, not the build output.
 
 ## Using the split packages directly
 
