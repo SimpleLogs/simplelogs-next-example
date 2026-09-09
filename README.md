@@ -49,7 +49,8 @@ import { SimpleLogsProvider } from "@simplelogs/next/provider";
 
 That hands the client config down through context, so `useSimpleLogs()` works
 anywhere below it. `environment` tags browser entries with the deployment's
-name and needs no `NEXT_PUBLIC_` prefix, for reasons under [Keys](#keys). `serverLogger` in a route handler needs nothing further —
+name and needs no `NEXT_PUBLIC_` prefix, for reasons under [Keys](#keys).
+`serverLogger` in a route handler needs nothing further —
 the server SDK reads `SIMPLELOGS_SERVER_KEY` from the environment at request
 time.
 
@@ -83,7 +84,7 @@ for how to tell which one is missing.
 
 ## Keys
 
-Two variables, and the difference between them is not decoration.
+Two env vars, and the difference between them is not decoration — then a third setting that is neither.
 
 | | Prefix | Read |
 |---|---|---|
@@ -420,14 +421,13 @@ and gzipping at level 9.
 These are not the figures `next build` used to print under **First Load JS**,
 and that column is gone as of Next 16 with Turbopack — which is why the old
 numbers could not be re-taken, and why there is nothing in the current build
-output left to compare these against. This sum appears to count a wider set of
-scripts than that column did: both rows sit a constant 117,168 B above the
-figures this table used to carry. Those came from a build this tree can no
-longer produce, so that gap is not attributable to anything — not to the
+output left to compare these against. Both rows sit a constant 117,168 B above
+the figures this table used to carry, but those came from a build this tree can
+no longer produce, so that gap is not attributable to anything — not to the
 method, not to the Next upgrade that removed the column, and not to the SDK.
 Compare the two rows with each other instead: they come from one build on one
-version, and their difference is the only figure in this section that measures
-what it says it does.
+version measured one way, so their difference is the only figure here that
+survives the change of method.
 
 | | Uncompressed | gzipped |
 |---|---|---|
@@ -657,10 +657,9 @@ config={{ clientKey, sessionReplay: { enabled: false } }}
 `enabled` is read at runtime, so no bundler can eliminate rrweb on it — the SDK
 imports it dynamically, and in this example's production build it lands in its
 own chunk of 215,294 B uncompressed — 65,995 B gzipped at level 9, as above —
-that is simply never fetched. The figure this replaced was 213,633 B, taken
-from the same superseded build as the table above, so the 1,661 B between them
-is not attributable to 2.0.1 alone. What the flag saves is the download, not
-the build output.
+that is simply never fetched. Measured the same way as the table above, so it
+is not comparable with figures from earlier builds of this file. What the flag
+saves is the download, not the build output.
 
 ## Using the split packages directly
 
