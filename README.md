@@ -430,9 +430,9 @@ grep -o 'src="/_next/static/[^"]*\.js"' .next/server/app/index.html |
   sed 's|src="/_next/|.next/|; s|"$||' | sort -u
 ```
 
-Pipe that into `xargs wc -c` for **Uncompressed** — the `total` line is the
-figure — and into `xargs -n1 gzip -9 -n -c | wc -c` for **gzipped**. Run on
-this tree that gives the *Logging + browser tracing* row; delete
+Run `next build`, then pipe that into `xargs wc -c` for **Uncompressed** — the
+`total` line is the figure — and into `xargs -n1 gzip -9 -n -c | wc -c` for
+**gzipped**. That gives the *Logging + browser tracing* row; delete
 `instrumentation-client.js`, `next build` again and re-run it for the other.
 The gzipped figure is exact because `gzip -c` writes one complete member per
 input, so the concatenated stream weighs the sum of the individual sizes. `-n`

@@ -39,7 +39,8 @@ export const metadata = { title: "SimpleLogs — Next.js example" };
  * read. The client bundle carries core's default already replaced, minified,
  * in the chunk that carries the SDK. Match it without pinning the minifier's
  * rename of `staticEnv`, which is allocated per build, and against a
- * production `next build` — `next dev` neither substitutes nor minifies:
+ * production `next build`: `next dev` substitutes `"development"` instead, and
+ * does not minify.
  *
  * grep -oE 'environment:[A-Za-z0-9_$]+\(\(\)=>"production"\)' .next/static/chunks/*.js
  *
