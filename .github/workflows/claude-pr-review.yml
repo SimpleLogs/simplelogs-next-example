@@ -258,10 +258,11 @@ jobs:
         with:
           fetch-depth: 1
 
-      # The gate below reads the review-complete marker out of the sticky
-      # summary comment, which is one comment rewritten in place run after run
-      # and so carries no record of which commit it describes. This timestamp
-      # separates the marker this review just wrote from the one it replaced.
+      # The gate below reads the completion line, the findings list and any
+      # review-complete marker out of the sticky summary comment, which is one
+      # comment rewritten in place run after run and so carries no record of
+      # which commit it describes. This timestamp separates what this review
+      # wrote from what it replaced.
       - name: Record when the review started
         id: started
         run: echo "at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
@@ -312,16 +313,20 @@ jobs:
       # review posted and fails on anything at minor or above; a nitpick, by
       # definition optional, does not fail it.
       #
-      # Counted from two places, and each severity takes the higher of the
-      # two. The inline comments are the reliable half — the action posts a
-      # finding's body verbatim, so its tag really is the first line — but a
-      # finding with no line to hang off is never inline. The review-complete
-      # marker covers those, and is a number the review states rather than a
-      # shape the summary's prose has to hold, so a findings list written as
-      # a numbered list or a table cannot hide a finding from this step.
-      # Disagreement between the two resolves upward: over-counting costs a
-      # push, under-counting ships the finding.
+      # Counted from three places, and each severity takes the highest. The
+      # inline comments are the reliable half — the action posts a finding's
+      # body verbatim, so its tag really is the first line — but a finding with
+      # no line to hang off is never inline. The summary's own findings list
+      # covers those, since the prompt requires every finding to appear there
+      # whether or not it is also inline. The review-complete marker is a
+      # number the review states rather than a shape prose has to hold, and it
+      # counts when it is there. Disagreement resolves upward: over-counting
+      # costs a push, under-counting ships the finding.
       - name: Fail on findings of minor severity or worse
+        # Runs even when an attempt above failed, so the completion check
+        # below is the thing that decides — rather than the job dying earlier
+        # and leaving that branch as provably dead code somebody later removes.
+        if: ${{ !cancelled() }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
@@ -338,6 +343,19 @@ jobs:
           if [ -z "${HEAD_SHA:-}" ]; then
             HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
               --json headRefOid --jq .headRefOid)
+          fi
+
+          # `started` carries no `if`, so a failure in a step above it — the
+          # scope verdict this job deliberately runs on, among them — skips it
+          # and leaves SINCE empty. Every filter below is `.updated_at >=
+          # env.SINCE`, and jq compares against "" as true, so an empty window
+          # is not a narrow one: it is the whole PR, every previous run's
+          # completion line and every finding ever raised on it. That reads as
+          # a finished review to the check below. No window is not a passing
+          # window.
+          if [ -z "${SINCE:-}" ]; then
+            echo "::error::The review never started on this run, so there is no window to count over. Re-run this workflow run."
+            exit 1
           fi
           export HEAD_SHA SINCE
 
@@ -379,29 +397,85 @@ jobs:
             --jq ".[] | select(${authors} and .updated_at >= env.SINCE) | .body" \
             | grep -oE '<!-- review-complete critical=[0-9]+ major=[0-9]+ medium=[0-9]+ minor=[0-9]+ nitpick=[0-9]+ -->' \
             > "$markers" || true
+          # `|| true` above swallows grep's "no match", which is the ordinary
+          # case now that the marker is optional. It would swallow a failed API
+          # call as quietly — but the same endpoint is read again below without
+          # that tolerance, so an outage still reddens this step rather than
+          # reading as "no findings declared".
 
-          # No marker means no finished review. The comment the action
-          # opens before it starts thinking is on the PR either way, so its
-          # presence proves nothing; this line is written by the model at the
-          # end of a summary it actually wrote. Without this check a session
-          # that ended having made no model call at all would read as a clean
-          # PR.
-          if [ ! -s "$markers" ]; then
-            echo "::error::This PR carries no review-complete marker from this run, so there is no finished review to gate on. Re-run this workflow run."
+          # Did a review finish? Two ways it might not have, and they look
+          # identical from here: a session that ends having made no model call
+          # at all, and the OIDC refusal the scope job describes above — where
+          # the action logs a skip and exits 0 because the workflow differs
+          # from the copy on the base branch. Both leave no comments, which is
+          # exactly what a clean review leaves.
+          #
+          # `steps.review.outcome` cannot tell them apart. What can is the line
+          # the ACTION writes into its sticky comment when a session completes.
+          # The model is not asked for it and cannot forget it, unlike the
+          # review-complete marker this used to require — a marker the model
+          # does not in fact write, which is why every PR on this repo failed
+          # here while the reviews themselves ran, posted their findings, and
+          # exited clean.
+          #
+          # Bounded by SINCE, so the previous run's line does not answer for
+          # this one, and fails closed: if the action's wording ever changes,
+          # this goes red rather than green, which is the direction that gets
+          # noticed.
+          finished=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
+            --jq ".[] | select(${authors} and .updated_at >= env.SINCE) | .body" \
+            | grep -c 'Claude finished' || true)
+          if [ "$finished" -eq 0 ]; then
+            echo "::error::No review session completed on this PR — the action left no completion line in its summary from this run. This is what an OIDC refusal on a changed workflow looks like, as well as a session that made no model call. Re-run this workflow run."
             exit 1
           fi
+
+          # The summary's own findings list, which is where a finding with no
+          # line to hang off lives — absent coverage, a cross-file problem, a
+          # page that no longer builds. The prompt requires every finding to
+          # appear here whether or not it is also inline, opening with the
+          # literal bracketed severity.
+          #
+          # This is what makes the marker's absence survivable. Without it the
+          # gate would count inline comments alone, and a review that posted
+          # three criticals in its summary and nothing inline would be
+          # indistinguishable from a clean PR.
+          summary="${RUNNER_TEMP}/summary.txt"
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
+            --jq ".[] | select(${authors} and .updated_at >= env.SINCE) | .body" \
+            > "$summary"
+
+          # The same list with Markdown's decoration taken off the front of
+          # every line, because how a finding is DRESSED is the model's choice
+          # and the count must not be. The prompt fixes the tag and the text
+          # after it, not what wraps them, and both shapes are already in the
+          # wild: one repo's reviews write `[minor] - ` flush left, another
+          # writes the tag as a `####` heading in backticks.
+          #
+          # Only leading punctuation goes: heading hashes, quote markers, list
+          # bullets and numbers, and the emphasis and code marks around the tag
+          # itself. Letters are untouched, so a sentence that happens to name a
+          # severity mid-line still does not start with one and still does not
+          # count.
+          plain="${RUNNER_TEMP}/summary-plain.txt"
+          sed -E 's/[`*_]//g; s/^[[:space:]]*([#>]+|[-+]|[0-9]+[.)])[[:space:]]*//g; s/^[[:space:]]+//' \
+            "$summary" > "$plain"
 
           blocking=0
           counts=""
           for severity in critical major medium minor nitpick; do
             observed=$(grep -cE "^\[${severity}\] - " "$inline" || true)
+            stated=$(grep -cE "^\[${severity}\] - " "$plain" || true)
             declared=$(grep -oE "\b${severity}=[0-9]+" "$markers" | cut -d= -f2 \
               | sort -rn | head -n 1 || true)
             declared=${declared:-0}
             # 10# because a count written as `08` is a decimal eight, while
             # bash arithmetic would otherwise read it as a malformed octal and
             # abort the step with a shell error rather than a count.
+            # Three sources, and the highest wins. Over-counting costs a push;
+            # under-counting ships the finding.
             count=$(( 10#$declared > observed ? 10#$declared : observed ))
+            count=$(( stated > count ? stated : count ))
             counts="${counts}${count} ${severity}, "
             case "$severity" in
               nitpick) ;;
