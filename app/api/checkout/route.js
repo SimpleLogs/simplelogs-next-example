@@ -85,8 +85,8 @@ export async function POST() {
           // would resolve whatever sits at the app root, which is the same
           // copy today but would stop being it the moment `@simplelogs/next`
           // nests its own — the one case where a reassuring answer would be
-          // worthless. (`next.config.mjs` owns the rule for when the version
-          // below goes stale; nesting is not the only way.)
+          // worthless. (`next.config.mjs` owns the rule for when the
+          // versions dated above go stale; nesting is not the only way.)
           //
           // node -e 'import("@simplelogs/next/server").then(m=>console.log(m.currentTraceIds()))'
           //
