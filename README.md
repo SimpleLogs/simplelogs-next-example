@@ -50,7 +50,7 @@ import { SimpleLogsProvider } from "@simplelogs/next/provider";
 That hands the client config down through context, so `useSimpleLogs()` works
 anywhere below it. `environment` tags browser entries with the deployment's
 environment — `development` or `production` here — and takes no `NEXT_PUBLIC_`
-prefix, since `NODE_ENV` is the framework's name rather than one you set; see
+prefix, since `NODE_ENV` is the framework's name rather than one you chose; see
 [Keys](#keys). `serverLogger` in a route handler needs nothing further — the
 server SDK reads `SIMPLELOGS_SERVER_KEY` from the environment at request time.
 
