@@ -425,9 +425,31 @@ jobs:
           finished=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
             --jq ".[] | select(${authors} and .updated_at >= env.SINCE) | .body" \
             | grep -c 'Claude finished' || true)
+
+          # That line exists only when `track_progress` is on, and the two
+          # steps above set it to `github.event_name == 'pull_request'`,
+          # because the action rejects it on anything else. So on a dispatch
+          # the action writes no sticky comment and therefore no completion
+          # line, and requiring one made `workflow_dispatch` — the re-review
+          # path this file's own errors send people to — impossible to pass
+          # however clean the PR was. It is also the only path that can see a
+          # corrected DESCRIPTION, since a re-run replays the original event
+          # payload, so the gap had teeth: a finding about the PR body could
+          # be fixed and never re-counted.
+          #
+          # There, the marker is the proof instead. It is weaker — the model
+          # writes it, so it can be forgotten, where the action's line cannot
+          # — but a dispatch is started by a person who can read the outcome,
+          # and a marker that is absent still fails closed here. On a
+          # `pull_request` event nothing changes: the action's line remains
+          # the only thing that counts.
           if [ "$finished" -eq 0 ]; then
-            echo "::error::No review session completed on this PR — the action left no completion line in its summary from this run. This is what an OIDC refusal on a changed workflow looks like, as well as a session that made no model call. Re-run this workflow run."
-            exit 1
+            if [ "${GITHUB_EVENT_NAME}" != "pull_request" ] && [ -s "$markers" ]; then
+              echo "No completion line on a ${GITHUB_EVENT_NAME} run; counting the review-complete marker instead."
+            else
+              echo "::error::No review session completed on this PR — the action left no completion line in its summary from this run. This is what an OIDC refusal on a changed workflow looks like, as well as a session that made no model call. Re-run this workflow run."
+              exit 1
+            fi
           fi
 
           # The summary's own findings list, which is where a finding with no
