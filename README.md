@@ -27,7 +27,7 @@ Add `http://localhost:5175` to the client key's allowed origins in Settings →
 API Keys. Client keys are origin-locked, so the browser half stays silent until
 you do.
 
-Requires Node 20 or newer.
+Requires Node 24 or newer.
 
 ## The integration
 
