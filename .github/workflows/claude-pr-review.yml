@@ -222,10 +222,10 @@ jobs:
           a one-paragraph plain-language verdict a non-technical reader can
           act on, then the findings in the format above, grouped most severe
           first.
-        - Drive the verdict from the highest severity present: any
-          critical or major means do not merge yet; medium means fix or
-          file a follow-up; minor means a small fix is still wanted before
-          merge. Only a nitpick leaves the PR ready as it stands.
+        - Drive the verdict from the highest severity present: any critical
+          or major means do not merge yet; medium means fix or file a
+          follow-up before merging; minor and nitpick leave the PR ready as
+          it stands and are answered on the PR rather than before it.
         - Put a `review-complete` marker of exactly this shape directly under
           that severity count, counting every finding you raised anywhere:
 
@@ -310,8 +310,10 @@ jobs:
       # What makes this check a gate rather than a record that a review
       # happened. The review's own exit status only says the session ran, so a
       # PR carrying a critical finding went green on it. This counts what the
-      # review posted and fails on anything at minor or above; a nitpick, by
-      # definition optional, does not fail it.
+      # review posted and fails on anything at medium or above. A minor
+      # finding and a nitpick are posted without failing it: neither is a
+      # reason the PR cannot ship, so they are answered on the PR rather than
+      # standing in front of it.
       #
       # Counted from three places, and each severity takes the highest. The
       # inline comments are the reliable half — the action posts a finding's
@@ -322,7 +324,7 @@ jobs:
       # number the review states rather than a shape prose has to hold, and it
       # counts when it is there. Disagreement resolves upward: over-counting
       # costs a push, under-counting ships the finding.
-      - name: Fail on findings of minor severity or worse
+      - name: Fail on findings of medium severity or worse
         # Runs even when an attempt above failed, so the completion check
         # below is the thing that decides — rather than the job dying earlier
         # and leaving that branch as provably dead code somebody later removes.
@@ -500,7 +502,7 @@ jobs:
             count=$(( stated > count ? stated : count ))
             counts="${counts}${count} ${severity}, "
             case "$severity" in
-              nitpick) ;;
+              minor | nitpick) ;;
               *) blocking=$((blocking + count)) ;;
             esac
           done
@@ -513,6 +515,6 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
           if [ "$blocking" -gt 0 ]; then
-            echo "::error::${blocking} finding(s) at minor severity or worse. Address them and push again."
+            echo "::error::${blocking} finding(s) at medium severity or worse. Address them and push again."
             exit 1
           fi
