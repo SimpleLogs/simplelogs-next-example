@@ -21,7 +21,7 @@ export default {
   // `instrumentation.js` both go through `@simplelogs/next/server`.
   // Externalising leaves the bundled import inside that package as a runtime
   // one — Turbopack's `externalImport`, an `await import()`, not a `require`.
-  // That reaches the package's ESM build because `@simplelogs/node@2.0.1` maps
+  // That reaches the package's ESM build because `@simplelogs/node@2.1.0` maps
   // the `import` condition to `dist/index.mjs`; the import alone does not
   // decide it. The specifier is not `@simplelogs/node` either: Turbopack
   // imports a hashed alias and writes `.next/node_modules/@simplelogs/node-<hash>`

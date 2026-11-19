@@ -35,7 +35,7 @@ export const metadata = { title: "SimpleLogs — Next.js example" };
  *
  * Next does inline `process.env.NODE_ENV` into client code without any prefix,
  * and that substitution is live in this build. It acts on
- * `@simplelogs/core@2.0.1`'s own default rather than on anything written here:
+ * `@simplelogs/core@2.1.0`'s own default rather than on anything written here:
  * the only `NODE_ENV` read in this repo is the one below, and it is a server
  * read. The client bundle carries core's default already replaced, minified,
  * in the chunk that carries the SDK. Match it without pinning the minifier's
