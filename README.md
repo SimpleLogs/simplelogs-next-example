@@ -237,12 +237,42 @@ sufficient.
 
 ## What you get without writing any logging code
 
-- **Page views**, including soft navigations between routes
+- **Page views**, including soft navigations between routes, carrying the
+  visit's dimensions — entry page, referrer, engaged time and scroll depth —
+  for [Visitors](https://docs.simplelogs.io/app/visitors/)
+- **Interaction digests** — one per page view, in the same request: the most
+  used elements with their clicks, rage clicks and dead clicks, for heatmaps
 - **Web Vitals** — FCP, LCP, TTFB, CLS
 - **Uncaught errors** and unhandled promise rejections
 - A **deploy marker** per deployment, taken from Vercel's build environment
 - **Console output**, but only while a session is being recorded — see
   [Session replay](#session-replay) below
+
+## Consent
+
+Analytics — page views, interaction digests, `track()` and `group()` — is sent
+without asking unless the project turns on **Wait for consent** in the
+dashboard (Settings → Visitor Analytics). With it on, nothing is sent or
+written to the browser's storage until the page calls `setConsent()`, from
+any client component under `SimpleLogsProvider`:
+
+```jsx
+"use client";
+import { setConsent } from "@simplelogs/next";
+
+export function ConsentButtons() {
+  return (
+    <>
+      <button onClick={() => setConsent({ analytics: true })}>Accept</button>
+      <button onClick={() => setConsent({ analytics: false })}>Decline</button>
+    </>
+  );
+}
+```
+
+The SDK does not remember the answer, so call it on every page load once your
+banner knows it. Logs and timings are not gated by it. See
+[Consent](https://docs.simplelogs.io/client/analytics#consent).
 
 ## Correlation across the client/server boundary
 
