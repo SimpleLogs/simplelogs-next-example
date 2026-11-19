@@ -60,7 +60,7 @@ export async function POST() {
           // is a separate question this cannot see — the `serverExternalPackages`
           // entry going missing leaves `joined` TRUE, which is exactly what
           // `otelStarted` below exists to answer.
-          // `?? {}` is belt-and-braces: 2.0.1's `currentTraceIds()` already
+          // `?? {}` is belt-and-braces: 2.1.0's `currentTraceIds()` already
           // returns `{}` when nothing is active.
           //
           // Which build that is checked against is not obvious, and the
@@ -70,7 +70,7 @@ export async function POST() {
           // `serverExternalPackages` in `next.config.mjs` hands that bundled
           // import to Turbopack's `externalImport`, which is `await
           // import(id)`, NOT a `require`. That reaches the package's ESM
-          // build because `@simplelogs/node@2.0.1` maps the `import`
+          // build because `@simplelogs/node@2.1.0` maps the `import`
           // condition to `dist/index.mjs` and `require` to `dist/index.js`;
           // the import alone does not decide it. So this route reaches
           // `@simplelogs/node/dist/index.mjs`, the ESM build, and so does

@@ -118,7 +118,7 @@ trade-offs and the same build-time capture.
 Next does inline `process.env.NODE_ENV` into client code without any prefix,
 and that substitution is live in this build — the docblock in
 [`app/layout.jsx`](app/layout.jsx) gives the `grep` that finds it in the chunk
-that carries the SDK. It acts on `@simplelogs/core@2.0.1`'s own default rather
+that carries the SDK. It acts on `@simplelogs/core@2.1.0`'s own default rather
 than on anything this example writes: the one read of `process.env.NODE_ENV`
 in this repo is the layout's, and it is a server read, so the value reaches
 the browser as a prop on the flight payload — the same route `clientKey`
@@ -271,7 +271,10 @@ export function ConsentButtons() {
 ```
 
 The SDK does not remember the answer, so call it on every page load once your
-banner knows it. Logs and timings are not gated by it. See
+banner knows it. Under Wait for consent, a browser sending Do Not Track or
+Global Privacy Control counts as a refusal that `setConsent({ analytics: true })`
+does not override — Brave sends GPC by default — so test the banner in a
+browser with both turned off. Logs and timings are sent either way. See
 [Consent](https://docs.simplelogs.io/client/analytics#consent).
 
 ## Correlation across the client/server boundary
@@ -676,7 +679,7 @@ switch under Settings → Session Replay.
 While a recording is running, the SDK also captures the page's `console.*`
 calls into it, and they are shipped and indexed with the recording.
 
-Read out of `@simplelogs/browser@2.0.1` and `@simplelogs/react@2.0.1`, since
+Read out of `@simplelogs/browser@2.1.0` and `@simplelogs/react@2.1.0`, since
 none of this is visible from the call site:
 
 - The console methods are wrapped when the replay module loads, not when a
